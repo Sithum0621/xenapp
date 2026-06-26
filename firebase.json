@@ -1,0 +1,6 @@
+{
+  "react-native": {
+    "messaging_android_notification_channel_id": "xen_notifications",
+    "messaging_android_notification_color": "@android:color/white"
+  }
+}

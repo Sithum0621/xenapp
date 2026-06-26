@@ -1,0 +1,16 @@
+# OPTIONS preflight has no JWT — disable gateway JWT verify so the handler can return CORS headers.
+# Also deploy with: supabase functions deploy teacher-student-enroll --no-verify-jwt
+# Auth is enforced inside the function (Bearer + auth.getUser()).
+[functions.teacher-student-enroll]
+verify_jwt = false
+
+# Webhook + service-role manual invoke; JWT verified inside the handler.
+[functions.send-push-notification]
+verify_jwt = false
+
+[functions.process-class-reminders]
+verify_jwt = false
+
+# Client invokes with Bearer JWT; gateway verify off for OPTIONS/CORS. Auth enforced via auth.getUser().
+[functions.record-login-session]
+verify_jwt = false
