@@ -1,5 +1,5 @@
 import { usePathname, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
 import { useAppLock } from '@/src/context/AppLockContext';
@@ -15,28 +15,38 @@ import { supabase } from '@/src/services/supabaseClient';
 import { isStaleAuthSessionError } from '@/src/utils/authSessionErrors';
 
 /**
- * Signs users out after 10 minutes of idle session age unless app lock (PIN) is active.
- * When app lock protects the device, session timeout is skipped — PIN gate handles return
- * visits after ~10 minutes away from the app.
+ * Signs users out after 10 minutes of session age unless app lock (PIN) is active.
+ * When PIN lock is on, auto-logout is never started — return visits use the PIN gate.
  */
 export default function SessionTimeoutGuard() {
   const appRouter = useRouter();
   const pathname = usePathname();
-  const { status, loading } = useAppLock();
-  const appLockActive = Boolean(status?.enabled && status?.pinIsSet);
+  const { status, statusError, loading } = useAppLock();
+  // PIN lock on → no idle auto-logout. Also skip while status RPC is failing so we
+  // do not accidentally arm a timer for users who actually have PIN enabled.
+  const skipIdleLogout = Boolean(status?.enabled && status?.pinIsSet) || Boolean(statusError);
+  const skipIdleLogoutRef = useRef(skipIdleLogout);
+  skipIdleLogoutRef.current = skipIdleLogout;
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   useEffect(() => {
     if (loading) return;
 
+    let cancelled = false;
     let signOutInProgress = false;
 
     const goToLoginUnlessPublicPolicies = () => {
-      // Public legal pages stay readable after sign-out / for guests.
-      if (isPoliciesPath(pathname)) return;
+      if (isPoliciesPath(pathnameRef.current)) return;
       appRouter.replace('/login');
     };
 
-    const forceLogout = async () => {
+    /** Idle / TTL logout only — never runs while PIN lock protects the session. */
+    const forceIdleLogout = async () => {
+      if (cancelled || skipIdleLogoutRef.current) {
+        clearSessionCountdown();
+        return;
+      }
       if (signOutInProgress) return;
       signOutInProgress = true;
       clearSessionCountdown();
@@ -49,16 +59,40 @@ export default function SessionTimeoutGuard() {
       signOutInProgress = false;
     };
 
-    void supabase.auth.getSession().then(({ error, data: { session } }) => {
-      if (isStaleAuthSessionError(error)) {
-        void forceLogout();
+    const forceStaleSessionLogout = async () => {
+      if (cancelled || signOutInProgress) return;
+      signOutInProgress = true;
+      clearSessionCountdown();
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        await supabase.auth.signOut().catch(() => {});
+      }
+      goToLoginUnlessPublicPolicies();
+      signOutInProgress = false;
+    };
+
+    const armIdleTimerIfNeeded = (session: unknown) => {
+      if (skipIdleLogoutRef.current || !session) {
+        clearSessionCountdown();
         return;
       }
-      if (!appLockActive && session) {
-        startSessionCountdown(() => {
-          void forceLogout();
-        });
+      startSessionCountdown(() => {
+        void forceIdleLogout();
+      });
+    };
+
+    if (skipIdleLogout) {
+      clearSessionCountdown();
+    }
+
+    void supabase.auth.getSession().then(({ error, data: { session } }) => {
+      if (cancelled) return;
+      if (isStaleAuthSessionError(error)) {
+        void forceStaleSessionLogout();
+        return;
       }
+      armIdleTimerIfNeeded(session);
     });
 
     const authListener = supabase.auth.onAuthStateChange((event, session) => {
@@ -69,41 +103,38 @@ export default function SessionTimeoutGuard() {
         return;
       }
 
-      if (appLockActive) {
+      if (skipIdleLogoutRef.current) {
         clearSessionCountdown();
         return;
       }
 
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
-        startSessionCountdown(() => {
-          void forceLogout();
-        });
+        armIdleTimerIfNeeded(session);
       }
     });
 
     const appStateListener = AppState.addEventListener('change', (state) => {
-      if (state !== 'active' || appLockActive) return;
+      if (state !== 'active') return;
+      if (skipIdleLogoutRef.current) {
+        clearSessionCountdown();
+        return;
+      }
       if (hasSessionExpired()) {
-        void forceLogout();
+        void forceIdleLogout();
         return;
       }
       refreshSessionCountdown(() => {
-        void forceLogout();
+        void forceIdleLogout();
       });
     });
 
-    if (appLockActive) {
-      clearSessionCountdown();
-    }
-
     return () => {
+      cancelled = true;
       authListener.data.subscription.unsubscribe();
       appStateListener.remove();
-      if (!appLockActive) {
-        clearSessionCountdown();
-      }
+      clearSessionCountdown();
     };
-  }, [appRouter, pathname, appLockActive, loading]);
+  }, [appRouter, skipIdleLogout, loading]);
 
   return null;
 }

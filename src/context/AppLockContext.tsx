@@ -76,7 +76,7 @@ export function AppLockProvider({ children }: { children: React.ReactNode }) {
     }
     const { status: next, error } = await appLockGetStatus();
     if (error) {
-      setStatus({ enabled: false, pinIsSet: false });
+      // Keep last known PIN status so a transient RPC failure does not enable idle auto-logout.
       setStatusError(error);
     } else {
       setStatus(next ?? { enabled: false, pinIsSet: false });
@@ -194,9 +194,10 @@ export function AppLockProvider({ children }: { children: React.ReactNode }) {
       const away = await wasAwayLongerThanGrace();
       const pinProtects = Boolean(status?.enabled && status?.pinIsSet);
 
-      if (pinProtects && away) {
-        setForegroundLocked(true);
-      } else if (!pinProtects && away && !suppressLaunchSignOutRef.current) {
+      // PIN lock on → never auto sign-out; only show unlock gate after grace.
+      if (pinProtects) {
+        if (away) setForegroundLocked(true);
+      } else if (away && !suppressLaunchSignOutRef.current) {
         await supabase.auth.signOut();
       }
 
