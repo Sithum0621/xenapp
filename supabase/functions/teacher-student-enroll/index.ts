@@ -163,15 +163,97 @@ async function enrollExistingStudent(
   return { ok: true };
 }
 
-async function lookupStudentByMobile(
+async function listStudentsByMobile(
   admin: ReturnType<typeof createClient>,
   mobileE164: string,
-): Promise<string | null> {
-  const { data, error } = await admin.rpc('lookup_parent_student_id_by_mobile', {
+): Promise<Array<{ student_user_id: string; full_name: string; created_at: string | null }>> {
+  const { data, error } = await admin.rpc('list_parent_students_by_mobile', {
     p_mobile: mobileE164,
   });
-  if (error || typeof data !== 'string' || !data) return null;
-  return data;
+  if (error || !Array.isArray(data)) return [];
+  return data
+    .map((row: Record<string, unknown>) => {
+      const id = typeof row.student_user_id === 'string' ? row.student_user_id : '';
+      if (!id) return null;
+      return {
+        student_user_id: id,
+        full_name:
+          typeof row.full_name === 'string' && row.full_name.trim()
+            ? row.full_name.trim()
+            : 'Student',
+        created_at: typeof row.created_at === 'string' ? row.created_at : null,
+      };
+    })
+    .filter((x): x is { student_user_id: string; full_name: string; created_at: string | null } =>
+      Boolean(x),
+    );
+}
+
+/** Mark which candidates are already on any of this teacher's personal/institute classes. */
+async function annotateInTeacherClasses(
+  admin: ReturnType<typeof createClient>,
+  teacherId: string,
+  candidates: Array<{ student_user_id: string; full_name: string; created_at: string | null }>,
+): Promise<
+  Array<{
+    student_user_id: string;
+    full_name: string;
+    created_at: string | null;
+    in_your_classes: boolean;
+  }>
+> {
+  if (candidates.length === 0) return [];
+  const ids = candidates.map((c) => c.student_user_id);
+
+  const [{ data: personalGroups }, { data: primaryLecture }, { data: coTeach }] = await Promise.all([
+    admin.from('teacher_personal_groups').select('id').eq('teacher_user_id', teacherId),
+    admin.from('lecture_groups').select('id').eq('primary_teacher_user_id', teacherId),
+    admin.from('lecture_group_teachers').select('lecture_group_id').eq('teacher_user_id', teacherId),
+  ]);
+
+  const personalIds = (personalGroups ?? []).map((g: { id: string }) => g.id);
+  const lectureIds = [
+    ...new Set([
+      ...(primaryLecture ?? []).map((g: { id: string }) => g.id),
+      ...(coTeach ?? []).map((g: { lecture_group_id: string }) => g.lecture_group_id),
+    ]),
+  ];
+
+  const enrolled = new Set<string>();
+
+  if (personalIds.length > 0) {
+    const { data: rows } = await admin
+      .from('teacher_personal_roster_entries')
+      .select('student_user_id')
+      .in('teacher_personal_group_id', personalIds)
+      .in('student_user_id', ids);
+    for (const r of rows ?? []) {
+      if (typeof r.student_user_id === 'string') enrolled.add(r.student_user_id);
+    }
+  }
+
+  if (lectureIds.length > 0) {
+    const { data: rows } = await admin
+      .from('lecture_group_students')
+      .select('student_user_id')
+      .in('lecture_group_id', lectureIds)
+      .in('student_user_id', ids);
+    for (const r of rows ?? []) {
+      if (typeof r.student_user_id === 'string') enrolled.add(r.student_user_id);
+    }
+  }
+
+  return candidates
+    .map((c) => ({
+      ...c,
+      in_your_classes: enrolled.has(c.student_user_id),
+    }))
+    .sort((a, b) => {
+      if (a.in_your_classes !== b.in_your_classes) return a.in_your_classes ? -1 : 1;
+      const at = a.created_at ? Date.parse(a.created_at) : 0;
+      const bt = b.created_at ? Date.parse(b.created_at) : 0;
+      return bt - at;
+    });
 }
 
 async function upsertStudentMobile(
@@ -433,6 +515,27 @@ Deno.serve(async (req) => {
     const groupSource = typeof body.group_source === 'string' ? body.group_source.trim() : '';
     const groupId = typeof body.group_id === 'string' ? body.group_id.trim() : '';
 
+    if (mode === 'lookup_by_mobile') {
+      const mobileRaw = typeof body.mobile_number === 'string' ? body.mobile_number.trim() : '';
+      const ident = parseUsername(mobileRaw);
+      if (!ident || ident.kind !== 'phone') {
+        return json({ error: 'invalid_username' }, req, 400);
+      }
+      const raw = await listStudentsByMobile(admin, ident.phone);
+      if (raw.length === 0) {
+        return json({ error: 'student_not_found', candidates: [] }, req, 404);
+      }
+      const candidates = await annotateInTeacherClasses(admin, user.id, raw);
+      return json(
+        {
+          ok: true,
+          mobile_number: ident.phone,
+          candidates,
+        },
+        req,
+      );
+    }
+
     if (mode === 'link_by_mobile') {
       const mobileRaw = typeof body.mobile_number === 'string' ? body.mobile_number.trim() : '';
       const ident = parseUsername(mobileRaw);
@@ -452,22 +555,48 @@ Deno.serve(async (req) => {
           ? body.student_user_id.trim()
           : '';
 
-      let studentUserId: string | null = scannedId || null;
-      if (studentUserId) {
-        const { data: scannedProfile } = await admin
-          .from('profiles')
-          .select('id, role')
-          .eq('id', studentUserId)
-          .maybeSingle();
-        if (!scannedProfile || scannedProfile.role !== 'parent_student') {
-          studentUserId = null;
+      const matches = await listStudentsByMobile(admin, ident.phone);
+      const annotated = await annotateInTeacherClasses(admin, user.id, matches);
+
+      let studentUserId: string | null = null;
+
+      if (scannedId) {
+        const chosen = annotated.find((c) => c.student_user_id === scannedId);
+        if (!chosen) {
+          // Explicit id must belong to this mobile (or be a valid student we'll attach mobile to).
+          const { data: scannedProfile } = await admin
+            .from('profiles')
+            .select('id, role')
+            .eq('id', scannedId)
+            .maybeSingle();
+          if (!scannedProfile || scannedProfile.role !== 'parent_student') {
+            return json(
+              { error: 'student_not_found', candidates: annotated },
+              req,
+              404,
+            );
+          }
+          // Allow linking a known student even if mobile row was missing / just created.
+          studentUserId = scannedId;
+        } else {
+          studentUserId = chosen.student_user_id;
         }
+      } else if (annotated.length === 1) {
+        studentUserId = annotated[0]!.student_user_id;
+      } else if (annotated.length > 1) {
+        return json(
+          {
+            error: 'ambiguous_mobile',
+            candidates: annotated,
+            mobile_number: ident.phone,
+          },
+          req,
+          409,
+        );
       }
+
       if (!studentUserId) {
-        studentUserId = await lookupStudentByMobile(admin, ident.phone);
-      }
-      if (!studentUserId) {
-        return json({ error: 'student_not_found' }, req, 404);
+        return json({ error: 'student_not_found', candidates: [] }, req, 404);
       }
 
       await upsertStudentMobile(admin, studentUserId, ident.phone);
@@ -494,15 +623,25 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (cardToken) {
-        const bound = await bindIssuedClassCard(admin, cardToken, user.id, studentUserId);
-        if (!bound.ok) {
-          return json({ error: bound.error, student_user_id: studentUserId }, req, 409);
-        }
+      const bound = await bindIssuedClassCard(admin, cardToken, user.id, studentUserId);
+      if (!bound.ok) {
+        return json({ error: bound.error, student_user_id: studentUserId }, req, 409);
       }
 
+      const linkedName =
+        annotated.find((c) => c.student_user_id === studentUserId)?.full_name ??
+        (
+          await admin.from('profiles').select('full_name').eq('id', studentUserId).maybeSingle()
+        ).data?.full_name ??
+        'Student';
+
       return json(
-        { ok: true, student_user_id: studentUserId, mobile_number: ident.phone },
+        {
+          ok: true,
+          student_user_id: studentUserId,
+          student_full_name: typeof linkedName === 'string' ? linkedName : 'Student',
+          mobile_number: ident.phone,
+        },
         req,
       );
     }

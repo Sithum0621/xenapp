@@ -7,7 +7,11 @@ import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
 import TeacherStudentQrScanner from '@/src/components/teacher/groupDetail/TeacherStudentQrScanner';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
-import { teacherStudentEnrollLinkByMobile } from '@/src/services/teacherStudentEnrollApi';
+import {
+  teacherStudentEnrollLinkByMobile,
+  teacherStudentEnrollLookupByMobile,
+  type TeacherStudentMobileCandidate,
+} from '@/src/services/teacherStudentEnrollApi';
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 import { FontFamily } from '@/src/theme/fonts';
@@ -21,6 +25,7 @@ const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const BORDER = '#E2E8F0';
 const SURFACE = '#FFFFFF';
+const SURFACE_SOFT = '#F8FAFC';
 
 export default function TeacherLinkStudentWithCardScreen() {
   const { t } = useTranslation();
@@ -31,6 +36,8 @@ export default function TeacherLinkStudentWithCardScreen() {
 
   const [cardToken, setCardToken] = useState<string | null>(null);
   const [mobile, setMobile] = useState('');
+  const [candidates, setCandidates] = useState<TeacherStudentMobileCandidate[] | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const goHome = () => routerBackOrReplace(router, appHref(AppRoutes.teacherDashboard));
@@ -38,10 +45,18 @@ export default function TeacherLinkStudentWithCardScreen() {
   const resetScan = () => {
     setCardToken(null);
     setMobile('');
+    setCandidates(null);
+    setSelectedId(null);
+  };
+
+  const resetCandidates = () => {
+    setCandidates(null);
+    setSelectedId(null);
   };
 
   const linkErrorMessage = (code: string | undefined) => {
     if (code === 'student_not_found') return gd('enrollErrMobileNotFound');
+    if (code === 'ambiguous_mobile') return ov('linkStudentWithCardPickStudent');
     if (code === 'card_already_linked') return gd('enrollErrCardAlreadyLinked');
     if (code === 'card_owned_by_other') return gd('enrollErrCardOwned');
     if (code === 'card_required') return gd('enrollErrCardRequired');
@@ -53,7 +68,7 @@ export default function TeacherLinkStudentWithCardScreen() {
     return gd('enrollErrGeneric');
   };
 
-  const submit = async () => {
+  const lookupStudents = async () => {
     const phone = parseSriLankaMobile(mobile);
     if (!phone) {
       appAlert(gd('registerValidationTitle'), gd('enrollErrInvalidUsername'));
@@ -66,15 +81,65 @@ export default function TeacherLinkStudentWithCardScreen() {
 
     setBusy(true);
     try {
-      const { ok, error } = await teacherStudentEnrollLinkByMobile({
-        mobile_number: phone,
-        card_token: cardToken,
-      });
+      const result = await teacherStudentEnrollLookupByMobile({ mobile_number: phone });
+      if (!result.ok || result.candidates.length === 0) {
+        appAlert(gd('workspaceError'), linkErrorMessage(result.error ?? 'student_not_found'));
+        return;
+      }
+      setCandidates(result.candidates);
+      setSelectedId(
+        result.candidates.length === 1 ? result.candidates[0]!.studentUserId : null,
+      );
+    } catch {
+      appAlert(gd('workspaceError'), gd('enrollErrNetwork'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async () => {
+    const phone = parseSriLankaMobile(mobile);
+    if (!phone) {
+      appAlert(gd('registerValidationTitle'), gd('enrollErrInvalidUsername'));
+      return;
+    }
+    if (!cardToken) {
+      appAlert(gd('workspaceError'), gd('enrollErrCardRequired'));
+      return;
+    }
+    if (!selectedId) {
+      appAlert(gd('workspaceError'), ov('linkStudentWithCardPickStudent'));
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const { ok, error, studentFullName, candidates: again } =
+        await teacherStudentEnrollLinkByMobile({
+          mobile_number: phone,
+          card_token: cardToken,
+          student_user_id: selectedId,
+        });
       if (!ok) {
+        if (error === 'ambiguous_mobile' && again && again.length > 0) {
+          setCandidates(again);
+          setSelectedId(null);
+          appAlert(gd('workspaceError'), ov('linkStudentWithCardPickStudent'));
+          return;
+        }
         appAlert(gd('workspaceError'), linkErrorMessage(error));
         return;
       }
-      appAlert(ov('linkStudentWithCardSuccessTitle'), ov('linkStudentWithCardSuccessBody'));
+      const name =
+        studentFullName?.trim() ||
+        candidates?.find((c) => c.studentUserId === selectedId)?.fullName ||
+        '';
+      appAlert(
+        ov('linkStudentWithCardSuccessTitle'),
+        name
+          ? ov('linkStudentWithCardSuccessBodyNamed', { name })
+          : ov('linkStudentWithCardSuccessBody'),
+      );
       goHome();
     } catch {
       appAlert(gd('workspaceError'), gd('enrollErrNetwork'));
@@ -99,6 +164,44 @@ export default function TeacherLinkStudentWithCardScreen() {
               <ActivityIndicator color={BRAND_BLUE} />
               <Text style={styles.busyText}>{gd('linkEnrolling')}</Text>
             </View>
+          ) : cardToken && candidates ? (
+            <>
+              <Text style={styles.title}>{ov('linkStudentWithCardChooseTitle')}</Text>
+              <Text style={styles.hint}>{ov('linkStudentWithCardChooseHint')}</Text>
+              <View style={styles.list}>
+                {candidates.map((c) => {
+                  const selected = selectedId === c.studentUserId;
+                  return (
+                    <Pressable
+                      key={c.studentUserId}
+                      onPress={() => setSelectedId(c.studentUserId)}
+                      style={[styles.candidate, selected && styles.candidateSelected]}>
+                      <Text style={styles.candidateName}>{c.fullName}</Text>
+                      {c.inYourClasses ? (
+                        <Text style={styles.candidateMeta}>
+                          {ov('linkStudentWithCardInYourClasses')}
+                        </Text>
+                      ) : (
+                        <Text style={styles.candidateMetaMuted}>
+                          {ov('linkStudentWithCardNotInClasses')}
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={styles.actions}>
+                <Pressable onPress={resetCandidates} style={styles.secondaryBtn}>
+                  <Text style={styles.secondaryText}>{t('teacherDashboard.groupsCancel')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => void submit()}
+                  style={[styles.primaryBtn, !selectedId && styles.primaryBtnDisabled]}
+                  disabled={!selectedId}>
+                  <Text style={styles.primaryText}>{gd('linkMobileSubmit')}</Text>
+                </Pressable>
+              </View>
+            </>
           ) : cardToken ? (
             <>
               <Text style={styles.title}>{ov('linkStudentWithCardScannedTitle')}</Text>
@@ -118,8 +221,8 @@ export default function TeacherLinkStudentWithCardScreen() {
                 <Pressable onPress={resetScan} style={styles.secondaryBtn}>
                   <Text style={styles.secondaryText}>{t('teacherDashboard.groupsCancel')}</Text>
                 </Pressable>
-                <Pressable onPress={() => void submit()} style={styles.primaryBtn}>
-                  <Text style={styles.primaryText}>{gd('linkMobileSubmit')}</Text>
+                <Pressable onPress={() => void lookupStudents()} style={styles.primaryBtn}>
+                  <Text style={styles.primaryText}>{ov('linkStudentWithCardFindStudents')}</Text>
                 </Pressable>
               </View>
             </>
@@ -182,6 +285,36 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: BRAND_BLUE_DARK,
   },
+  list: { gap: 8, marginBottom: 8 },
+  candidate: {
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: SURFACE_SOFT,
+  },
+  candidateSelected: {
+    borderColor: BRAND_BLUE,
+    backgroundColor: '#EEF4FF',
+  },
+  candidateName: {
+    fontSize: 15,
+    fontFamily: FontFamily.bold,
+    color: BRAND_BLUE_DARK,
+  },
+  candidateMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    color: BRAND_BLUE,
+  },
+  candidateMetaMuted: {
+    marginTop: 4,
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    color: TEXT_MUTED,
+  },
   actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
   secondaryBtn: {
     flex: 1,
@@ -199,6 +332,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
+  primaryBtnDisabled: { opacity: 0.45 },
   primaryText: { fontFamily: FontFamily.bold, color: '#FFFFFF', fontSize: 14 },
   busy: { paddingVertical: 40, alignItems: 'center', gap: 12 },
   busyText: { fontSize: 14, fontFamily: FontFamily.bold, color: TEXT_MUTED },

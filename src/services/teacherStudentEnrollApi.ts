@@ -36,6 +36,17 @@ export type TeacherStudentEnrollLinkByMobilePayload = {
   group_id?: string;
 };
 
+export type TeacherStudentEnrollLookupByMobilePayload = {
+  mode: 'lookup_by_mobile';
+  mobile_number: string;
+};
+
+export type TeacherStudentMobileCandidate = {
+  studentUserId: string;
+  fullName: string;
+  inYourClasses: boolean;
+};
+
 export type TeacherStudentEnrollAddByNameMobilePayload = {
   mode: 'add_by_name_mobile';
   group_source: TeacherStudentEnrollGroupSource;
@@ -49,6 +60,7 @@ async function invokeTeacherStudentEnroll(
     | TeacherStudentEnrollRegisterPayload
     | TeacherStudentEnrollLinkPayload
     | TeacherStudentEnrollLinkByMobilePayload
+    | TeacherStudentEnrollLookupByMobilePayload
     | TeacherStudentEnrollAddByNameMobilePayload,
 ): Promise<{ ok: boolean; json: Record<string, unknown> }> {
   try {
@@ -125,9 +137,54 @@ export async function teacherStudentEnrollLink(
   };
 }
 
+function parseCandidates(raw: unknown): TeacherStudentMobileCandidate[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row) => {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+      const r = row as Record<string, unknown>;
+      const studentUserId =
+        typeof r.student_user_id === 'string' ? r.student_user_id.trim() : '';
+      if (!studentUserId) return null;
+      return {
+        studentUserId,
+        fullName:
+          typeof r.full_name === 'string' && r.full_name.trim()
+            ? r.full_name.trim()
+            : 'Student',
+        inYourClasses: r.in_your_classes === true,
+      };
+    })
+    .filter((x): x is TeacherStudentMobileCandidate => Boolean(x));
+}
+
+export async function teacherStudentEnrollLookupByMobile(
+  payload: Omit<TeacherStudentEnrollLookupByMobilePayload, 'mode'>,
+): Promise<{
+  ok: boolean;
+  error?: string;
+  candidates: TeacherStudentMobileCandidate[];
+  mobileNumber?: string;
+}> {
+  const { ok, json } = await invokeTeacherStudentEnroll({ mode: 'lookup_by_mobile', ...payload });
+  return {
+    ok,
+    error: typeof json.error === 'string' ? json.error : undefined,
+    candidates: parseCandidates(json.candidates),
+    mobileNumber: typeof json.mobile_number === 'string' ? json.mobile_number : undefined,
+  };
+}
+
 export async function teacherStudentEnrollLinkByMobile(
   payload: Omit<TeacherStudentEnrollLinkByMobilePayload, 'mode'>,
-): Promise<{ ok: boolean; error?: string; detail?: string; studentUserId?: string }> {
+): Promise<{
+  ok: boolean;
+  error?: string;
+  detail?: string;
+  studentUserId?: string;
+  studentFullName?: string;
+  candidates?: TeacherStudentMobileCandidate[];
+}> {
   const { ok, json } = await invokeTeacherStudentEnroll({ mode: 'link_by_mobile', ...payload });
   if (ok) {
     invalidateSessionCache(SessionCacheKeys.TEACHER_DASHBOARD_OVERVIEW);
@@ -137,6 +194,9 @@ export async function teacherStudentEnrollLinkByMobile(
     error: typeof json.error === 'string' ? json.error : undefined,
     detail: typeof json.detail === 'string' ? json.detail : undefined,
     studentUserId: typeof json.student_user_id === 'string' ? json.student_user_id : undefined,
+    studentFullName:
+      typeof json.student_full_name === 'string' ? json.student_full_name : undefined,
+    candidates: parseCandidates(json.candidates),
   };
 }
 
