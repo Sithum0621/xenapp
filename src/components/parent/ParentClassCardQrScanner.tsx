@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import QrScanCameraView from '@/src/components/camera/QrScanCameraView';
 import { Text } from '@/src/theme/Text';
 import {
   parseClassCardScan,
@@ -72,12 +73,7 @@ export default function ParentClassCardQrScanner({ onScanned, onCancel }: Props)
     <View style={styles.wrap}>
       <Text style={styles.hint}>{t('parentDashboard.myClassCardScanHint')}</Text>
       <View style={styles.cameraFrame}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-          onBarcodeScanned={handleBarcode}
-        />
+        <QrScanCameraView onBarcodeScanned={handleBarcode} />
         <View pointerEvents="none" style={styles.scanGuide}>
           <View style={styles.guideCorner} />
         </View>

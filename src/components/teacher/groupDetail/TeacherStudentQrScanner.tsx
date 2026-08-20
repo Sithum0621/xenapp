@@ -7,6 +7,7 @@ import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import QrScanCameraView from '@/src/components/camera/QrScanCameraView';
 import { parseClassCardScan, parseXenIdFromScan } from '@/src/utils/xenQrPayload';
 
 const BRAND_BLUE = '#041830';
@@ -159,12 +160,10 @@ export default function TeacherStudentQrScanner({
         <>
           {Platform.OS !== 'web' || showWebCam ? (
             <View style={[styles.cameraBox, compact && styles.cameraBoxCompact]}>
-              <CameraView
-                style={StyleSheet.absoluteFill}
-                facing="back"
-                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                onBarcodeScanned={onBarcodeScanned}
-              />
+              <QrScanCameraView onBarcodeScanned={onBarcodeScanned} />
+              <View pointerEvents="none" style={styles.scanGuide}>
+                <View style={styles.guideInner} />
+              </View>
             </View>
           ) : null}
 
@@ -219,7 +218,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '800', color: BRAND_BLUE_DARK },
   hint: { fontSize: 13, color: TEXT_MUTED, fontWeight: '600', lineHeight: 18 },
   cameraBox: {
-    height: Platform.OS === 'web' ? 260 : 280,
+    height: Platform.OS === 'web' ? 280 : 320,
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#0f172a',
@@ -227,10 +226,30 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
   },
   cameraBoxCompact: {
-    height: Platform.OS === 'web' ? 200 : 220,
+    height: Platform.OS === 'web' ? 220 : 260,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: BORDER,
+  },
+  scanGuide: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    alignSelf: 'center',
+    top: '18%',
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.92)',
+  },
+  guideInner: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    bottom: 10,
+    left: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   card: {
     padding: 14,
