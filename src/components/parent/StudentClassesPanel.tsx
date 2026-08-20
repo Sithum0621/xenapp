@@ -29,9 +29,10 @@ import {
   paymentStatusColor,
 } from '@/src/utils/classPaymentStatus';
 import { Text } from '@/src/theme/Text';
+import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const BRAND_BLUE_SOFT = 'rgba(18, 59, 122, 0.08)';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
@@ -342,7 +343,8 @@ export default function StudentClassesPanel({
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   listContent: {
-    paddingTop: 0,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: PAGE_CONTENT_TOP,
     flexGrow: 1,
   },
   listContentEmpty: {

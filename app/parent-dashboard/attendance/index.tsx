@@ -9,9 +9,9 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AttendanceGroupCard from '@/src/components/parent/AttendanceGroupCard';
+import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
 import {
   ATTENDANCE_WINDOW_DAYS,
@@ -20,12 +20,12 @@ import {
 } from '@/src/services/studentAttendanceApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
+import { PAGE_CONTENT_BOTTOM } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
-const SURFACE_ALT = '#F4F6FA';
 const BORDER = '#E2E8F0';
 
 export default function ParentAttendanceScreen() {
@@ -84,18 +84,13 @@ export default function ParentAttendanceScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('appLock.back')}
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}>
-          <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
-          <Text style={styles.backLabel}>{t('appLock.back')}</Text>
-        </Pressable>
-      </View>
-
+    <DashboardScreenShell
+      showBack
+      title={t('parentDashboard.attendanceScreenTitle')}
+      subtitle={t('parentDashboard.attendanceScreenSubtitle', {
+        days: ATTENDANCE_WINDOW_DAYS,
+      })}
+      padContent={false}>
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -103,13 +98,6 @@ export default function ParentAttendanceScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />
         }>
-        <Text style={styles.screenTitle}>{t('parentDashboard.attendanceScreenTitle')}</Text>
-        <Text style={styles.screenSubtitle}>
-          {t('parentDashboard.attendanceScreenSubtitle', {
-            days: ATTENDANCE_WINDOW_DAYS,
-          })}
-        </Text>
-
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={BRAND_BLUE} />
@@ -160,47 +148,16 @@ export default function ParentAttendanceScreen() {
           </View>
         ) : null}
       </KeyboardAwareScrollView>
-    </SafeAreaView>
+    </DashboardScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SURFACE_ALT },
-  topBar: {
-    paddingHorizontal: 12,
-    paddingBottom: 4,
-    backgroundColor: SURFACE_ALT,
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    alignSelf: 'flex-start',
-  },
-  backBtnPressed: { opacity: 0.7 },
-  backLabel: {
-    fontSize: 16,
-    fontFamily: FontFamily.regular,
-    color: BRAND_BLUE_DARK,
-  },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: PAGE_CONTENT_BOTTOM,
     gap: 16,
-  },
-  screenTitle: {
-    fontSize: 26,
-    fontFamily: FontFamily.bold,
-    color: BRAND_BLUE_DARK,
-    letterSpacing: -0.3,
-  },
-  screenSubtitle: {
-    fontSize: 14,
-    fontFamily: FontFamily.regular,
-    color: TEXT_MUTED,
-    marginBottom: 8,
   },
   list: { gap: 14 },
   centered: { alignItems: 'center', paddingVertical: 48, gap: 12 },

@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
     cancel_url: cancelUrl,
     notify_url: notifyUrl,
     order_id: orderId,
-    items: 'XEN Teacher Wallet Top-up',
+    items: 'MyTuition Teacher Wallet Top-up',
     currency,
     amount,
     hash,

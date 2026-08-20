@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/src/theme/Text';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 

@@ -37,7 +37,7 @@ export const AppScrollView = forwardRef<ScrollView, AppScrollViewProps>(function
       ref={ref}
       horizontal={horizontal}
       {...rest}
-      {...SCROLL_VIEW_TOUCH_PROPS}
+      {...(SCROLL_VIEW_TOUCH_PROPS as ScrollViewProps)}
       automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       style={[webScrollSurfaceStyle(horizontal === true), style]}
       contentContainerStyle={[

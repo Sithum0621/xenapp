@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { Text } from '@/src/theme/Text';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
 
-const SUPPORT_EMAIL = 'support@xen.app';
+import { APP_SUPPORT_EMAIL } from '@/src/constants/brand';
+
+const SUPPORT_EMAIL = APP_SUPPORT_EMAIL;
 
 async function openUrl(url: string, errorTitle: string, errorBody: string): Promise<void> {
   try {
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       android: { elevation: 2 },
       default: {
-        shadowColor: '#0E2F63',
+        shadowColor: '#00101F',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.06,
         shadowRadius: 14,

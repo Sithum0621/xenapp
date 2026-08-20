@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   },
   choiceBtnSelected: {
     borderColor: parentBrandBlue,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   choiceBtnPressed: {
     opacity: 0.9,

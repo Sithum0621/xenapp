@@ -5,6 +5,7 @@
  * Deploy: supabase functions deploy superadmin-create-institute-admin
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import { jsonResponse, optionsResponse } from '../_shared/cors.ts';
 import { sendHtmlEmailViaResend } from '../_shared/resendMail.ts';
 import {
   buildStaffCredentialsEmailHtml,
@@ -12,16 +13,8 @@ import {
   waitForProfileRow,
 } from '../_shared/staffTempPassword.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function json(req: Request, body: Record<string, unknown>, status = 200) {
+  return jsonResponse(req, body, status);
 }
 
 const UUID_RE =
@@ -29,7 +22,7 @@ const UUID_RE =
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return optionsResponse(req);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -37,12 +30,12 @@ Deno.serve(async (req) => {
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!supabaseUrl?.trim() || !anonKey?.trim() || !serviceRole?.trim()) {
-    return json({ error: 'server_misconfigured' }, 500);
+    return json(req, { error: 'server_misconfigured' }, 500);
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    return json({ error: 'unauthorized' }, 401);
+    return json(req, { error: 'unauthorized' }, 401);
   }
 
   const userClient = createClient(supabaseUrl, anonKey, {
@@ -56,7 +49,7 @@ Deno.serve(async (req) => {
   } = await userClient.auth.getUser();
 
   if (userErr || !user?.id) {
-    return json({ error: 'unauthorized' }, 401);
+    return json(req, { error: 'unauthorized' }, 401);
   }
 
   const admin = createClient(supabaseUrl, serviceRole, {
@@ -66,7 +59,7 @@ Deno.serve(async (req) => {
   const { data: callerProfile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
 
   if (callerProfile?.role !== 'superadmin') {
-    return json({ error: 'not_superadmin' }, 403);
+    return json(req, { error: 'not_superadmin' }, 403);
   }
 
   let body: {
@@ -79,7 +72,7 @@ Deno.serve(async (req) => {
   try {
     body = await req.json();
   } catch {
-    return json({ error: 'invalid_json' }, 400);
+    return json(req, { error: 'invalid_json' }, 400);
   }
 
   const instituteRaw = typeof body.institute_id === 'string' ? body.institute_id.trim() : '';
@@ -89,21 +82,21 @@ Deno.serve(async (req) => {
   const password = typeof body.password === 'string' ? body.password : '';
 
   if (!instituteRaw || !UUID_RE.test(instituteRaw)) {
-    return json({ error: 'invalid_institute_id' }, 400);
+    return json(req, { error: 'invalid_institute_id' }, 400);
   }
 
   if (!firstName || !lastName || !email || !password || password.length < 6) {
-    return json({ error: 'validation_failed' }, 400);
+    return json(req, { error: 'validation_failed' }, 400);
   }
 
   if (!email.includes('@')) {
-    return json({ error: 'validation_failed' }, 400);
+    return json(req, { error: 'validation_failed' }, 400);
   }
 
   const { data: instituteRow } = await admin.from('institutes').select('id').eq('id', instituteRaw).maybeSingle();
 
   if (!instituteRow?.id) {
-    return json({ error: 'institute_not_found' }, 404);
+    return json(req, { error: 'institute_not_found' }, 404);
   }
 
   const full_name = `${firstName} ${lastName}`.trim();
@@ -126,29 +119,29 @@ Deno.serve(async (req) => {
       msg.includes('already been registered') ||
       msg.includes('user already registered')
     ) {
-      return json({ error: 'email_exists' }, 409);
+      return json(req, { error: 'email_exists' }, 409);
     }
     if (
       msg.includes('institute_not_found_for_admin_provision') ||
       msg.includes('institute_not_found')
     ) {
-      return json({ error: 'institute_not_found' }, 404);
+      return json(req, { error: 'institute_not_found' }, 404);
     }
     if (msg.includes('nic_required')) {
-      return json({ error: 'nic_required_for_admin' }, 400);
+      return json(req, { error: 'nic_required_for_admin' }, 400);
     }
-    return json({ error: 'create_failed', detail: createErr?.message ?? 'unknown' }, 400);
+    return json(req, { error: 'create_failed', detail: createErr?.message ?? 'unknown' }, 400);
   }
 
   const userId = created.user.id;
   const profileReady = await waitForProfileRow(admin, userId);
   if (!profileReady) {
-    return json({ error: 'profile_not_ready', user_id: userId }, 500);
+    return json(req, { error: 'profile_not_ready', user_id: userId }, 500);
   }
 
   const cleared = await clearStaffTempPasswordExpiry(admin, userId);
   if (!cleared.ok) {
-    return json({ error: 'profile_update_failed', detail: cleared.detail, user_id: userId }, 500);
+    return json(req, { error: 'profile_update_failed', detail: cleared.detail, user_id: userId }, 500);
   }
 
   const emailHtml = buildStaffCredentialsEmailHtml({
@@ -160,7 +153,7 @@ Deno.serve(async (req) => {
 
   const sent = await sendHtmlEmailViaResend({
     to: email,
-    subject: 'Your XEN institute admin account',
+    subject: 'Your MyTuition institute admin account',
     html: emailHtml,
   });
 
@@ -172,7 +165,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  return json({
+  return json(req, {
     ok: true,
     user_id: userId,
     email_sent: sent.ok,

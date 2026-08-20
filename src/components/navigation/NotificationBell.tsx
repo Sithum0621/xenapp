@@ -18,8 +18,8 @@ import ScrollFriendlyPressable from '@/src/components/layout/ScrollFriendlyPress
 import type { AppNotification } from '@/src/services/pushNotificationsApi';
 import { notificationVisual } from '@/src/utils/notificationVisual';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const TEXT_MUTED = '#64748B';
 const BORDER = '#E2E8F0';
 const SURFACE = '#FFFFFF';
@@ -313,11 +313,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       web: {
-        // @ts-expect-error -- web-only CSS
         boxShadow: '0 12px 32px rgba(14, 47, 99, 0.18)',
-      },
+      } as object,
       default: {
-        shadowColor: '#0E2F63',
+        shadowColor: '#00101F',
         shadowOpacity: 0.18,
         shadowRadius: 18,
         shadowOffset: { width: 0, height: 10 },

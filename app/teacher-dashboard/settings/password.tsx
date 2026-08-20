@@ -5,14 +5,15 @@ import { useState } from 'react';
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { supabase } from '@/src/services/supabaseClient';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
@@ -48,18 +49,10 @@ export default function TeacherPasswordSettings() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => routerBackOrReplace(router, appHref(AppRoutes.teacherDashboard))}
-          style={({ pressed }) => [styles.backRow, pressed && { opacity: 0.75 }]}>
-          <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
-          <Text style={styles.backLabel}>Back</Text>
-        </Pressable>
-        <Text style={styles.title}>Password Management</Text>
-      </View>
-
+    <DashboardScreenShell
+      showBack
+      title="Password Management"
+      onBack={() => routerBackOrReplace(router, appHref(AppRoutes.teacherDashboard))}>
       <View style={styles.card}>
         <Text style={styles.subtitle}>
           Set a new password for your account. Use at least 6 characters.
@@ -102,23 +95,17 @@ export default function TeacherPasswordSettings() {
           <Text style={styles.primaryBtnText}>{saving ? 'Updating...' : 'Update Password'}</Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </DashboardScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { paddingHorizontal: 16, paddingBottom: 8 },
-  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, alignSelf: 'flex-start' },
-  backLabel: { fontSize: 16, fontWeight: '700', color: BRAND_BLUE_DARK },
-  title: { fontSize: 22, fontWeight: '800', color: BRAND_BLUE_DARK, paddingHorizontal: 8 },
   card: {
-    margin: 16,
     borderWidth: 1.5,
     borderColor: BORDER,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    padding: PAGE_EDGE_INSET,
   },
   subtitle: {
     fontSize: 14,

@@ -15,8 +15,9 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_MY = '#1E88E5';
 const PAGE_BG = '#FFFFFF';
 const SUBTLE_BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
@@ -65,7 +66,7 @@ export default function LanguageSelectScreen({ onContinue }: LanguageSelectScree
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.page}>
         <View style={styles.header}>
-          <View style={styles.logoMark} accessibilityRole="image" accessibilityLabel="XEN">
+          <View style={styles.logoMark} accessibilityRole="image" accessibilityLabel="MyTuition">
             <Ionicons name="book" size={36} color={BRAND_BLUE} />
           </View>
           <Text style={styles.brandTitle} accessibilityRole="header">
@@ -223,8 +224,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   langButtonSelected: {
-    borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    borderColor: BRAND_MY,
+    backgroundColor: '#E3F2FD',
   },
   langButtonPressed: {
     opacity: 0.92,

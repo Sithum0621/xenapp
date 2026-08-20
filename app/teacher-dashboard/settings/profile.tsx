@@ -7,16 +7,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { loadTeacherProfileFields, saveTeacherProfileFields } from '@/src/services/teacherProfileApi';
 import { supabase } from '@/src/services/supabaseClient';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
@@ -265,22 +266,15 @@ export default function TeacherProfileSettings() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <DashboardScreenShell
+      showBack
+      title="Profile"
+      onBack={() => routerBackOrReplace(router, appHref(AppRoutes.teacherDashboard))}
+      padContent={false}>
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardExtraPadding={32}>
-        <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => routerBackOrReplace(router, appHref(AppRoutes.teacherDashboard))}
-            style={({ pressed }) => [styles.backRow, pressed && { opacity: 0.75 }]}>
-            <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
-            <Text style={styles.backLabel}>Back</Text>
-          </Pressable>
-          <Text style={styles.title}>Profile</Text>
-        </View>
-
         <View style={styles.card}>
           <Text style={styles.subtitle}>Update your personal details used across your account.</Text>
 
@@ -370,25 +364,18 @@ export default function TeacherProfileSettings() {
           )}
         </View>
       </KeyboardAwareScrollView>
-    </SafeAreaView>
+    </DashboardScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { paddingBottom: 32 },
-  header: { paddingHorizontal: 16, paddingBottom: 8 },
-  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, alignSelf: 'flex-start' },
-  backLabel: { fontSize: 16, fontWeight: '700', color: BRAND_BLUE_DARK },
-  title: { fontSize: 22, fontWeight: '800', color: BRAND_BLUE_DARK, paddingHorizontal: 8 },
+  scrollContent: { paddingBottom: 32, paddingHorizontal: PAGE_EDGE_INSET, paddingTop: 4 },
   card: {
-    marginHorizontal: 16,
-    marginTop: 4,
     borderWidth: 1.5,
     borderColor: BORDER,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    padding: PAGE_EDGE_INSET,
   },
   subtitle: {
     fontSize: 14,

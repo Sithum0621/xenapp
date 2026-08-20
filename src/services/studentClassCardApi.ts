@@ -51,8 +51,8 @@ export async function fetchStudentClassCard(
       xenStudentId: asString(raw.xen_student_id),
     };
 
-    if (!card.xenStudentId) {
-      return { ok: false, error: 'Student ID could not be generated.', code: 'no_student_id' };
+    if (!card.studentUserId) {
+      return { ok: false, error: 'Student is required.', code: 'student_required' };
     }
 
     return { ok: true, card };

@@ -7,8 +7,8 @@ import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 import { notificationVisual } from '@/src/utils/notificationVisual';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 
 export type FcmForegroundBannerProps = {
   message: ForegroundFcmMessage;
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: 'rgba(18, 59, 122, 0.14)',
-    shadowColor: '#0E2F63',
+    shadowColor: '#00101F',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 10,

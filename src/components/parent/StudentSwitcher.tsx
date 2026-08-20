@@ -202,7 +202,7 @@ const TAB_HEIGHT = 38;
 const cardShadow = Platform.select({
   android: { elevation: 3 },
   default: {
-    shadowColor: '#0E2F63',
+    shadowColor: '#00101F',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 18,

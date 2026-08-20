@@ -10,8 +10,8 @@ import { routeForPaymentPlan, subscriptionCountdownVisibleForRole } from '@/src/
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const WARN_BORDER = 'rgba(217, 119, 6, 0.55)';
 const WARN_FOREGROUND = '#92400E';
 const SOFT_BORDER = 'rgba(18, 59, 122, 0.18)';
@@ -65,7 +65,7 @@ export default function FloatingTimeRemainingBar({
 
   if (!subscriptionCountdownVisibleForRole(role)) return null;
 
-  if (!expiryDateIso) return null;
+  if (!expiryDateIso || expiryDateIso === 'infinity') return null;
 
   const remainingMs = Math.max(0, expiryMs - nowMs);
   const isExpired = !isActive || remainingMs <= 0;
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       android: { elevation: 6 },
       default: {
-        shadowColor: '#0E2F63',
+        shadowColor: '#00101F',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.12,
         shadowRadius: 14,
@@ -158,13 +158,9 @@ const styles = StyleSheet.create({
     }),
   },
   glassWeb: {
-    // CSS-only frosted-glass for the web build. Native builds gracefully fall
-    // back to the soft surface above (no extra deps required).
-    // @ts-expect-error - web-only style key, ignored by RN native
     backdropFilter: 'saturate(140%) blur(14px)',
-    // @ts-expect-error - vendor prefix for Safari
     WebkitBackdropFilter: 'saturate(140%) blur(14px)',
-  },
+  } as object,
   glassWarning: { borderColor: WARN_BORDER },
   row: {
     flexDirection: 'row',

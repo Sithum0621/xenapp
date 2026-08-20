@@ -8,3 +8,10 @@ export type UseFirebaseMessagingResult = {
   permissionGranted: boolean;
   refreshToken: () => Promise<string | null>;
 };
+
+/** In-app banner payload for a foreground FCM message. */
+export type ForegroundFcmMessage = {
+  title: string;
+  body?: string;
+  data?: Record<string, string | undefined>;
+};

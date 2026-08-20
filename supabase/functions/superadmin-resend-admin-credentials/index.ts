@@ -4,22 +4,15 @@
  * Deploy: supabase functions deploy superadmin-resend-admin-credentials
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import { jsonResponse, optionsResponse } from '../_shared/cors.ts';
 import { sendHtmlEmailViaResend } from '../_shared/resendMail.ts';
 import {
   buildStaffCredentialsEmailHtml,
   clearStaffTempPasswordExpiry,
 } from '../_shared/staffTempPassword.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function json(req: Request, body: Record<string, unknown>, status = 200) {
+  return jsonResponse(req, body, status);
 }
 
 const UUID_RE =
@@ -33,7 +26,7 @@ function randomTempPassword(length = 12): string {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return optionsResponse(req);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -41,12 +34,12 @@ Deno.serve(async (req) => {
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!supabaseUrl?.trim() || !anonKey?.trim() || !serviceRole?.trim()) {
-    return json({ error: 'server_misconfigured' }, 500);
+    return json(req, { error: 'server_misconfigured' }, 500);
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    return json({ error: 'unauthorized' }, 401);
+    return json(req, { error: 'unauthorized' }, 401);
   }
 
   const userClient = createClient(supabaseUrl, anonKey, {
@@ -60,7 +53,7 @@ Deno.serve(async (req) => {
   } = await userClient.auth.getUser();
 
   if (userErr || !user?.id) {
-    return json({ error: 'unauthorized' }, 401);
+    return json(req, { error: 'unauthorized' }, 401);
   }
 
   const admin = createClient(supabaseUrl, serviceRole, {
@@ -70,21 +63,21 @@ Deno.serve(async (req) => {
   const { data: callerProfile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
 
   if (callerProfile?.role !== 'superadmin') {
-    return json({ error: 'not_superadmin' }, 403);
+    return json(req, { error: 'not_superadmin' }, 403);
   }
 
   let body: { institute_id?: string; user_id?: string };
   try {
     body = await req.json();
   } catch {
-    return json({ error: 'invalid_json' }, 400);
+    return json(req, { error: 'invalid_json' }, 400);
   }
 
   const instituteRaw = typeof body.institute_id === 'string' ? body.institute_id.trim() : '';
   const targetUserId = typeof body.user_id === 'string' ? body.user_id.trim() : '';
 
   if (!instituteRaw || !UUID_RE.test(instituteRaw) || !targetUserId || !UUID_RE.test(targetUserId)) {
-    return json({ error: 'validation_failed' }, 400);
+    return json(req, { error: 'validation_failed' }, 400);
   }
 
   const { data: targetProfile } = await admin
@@ -98,24 +91,24 @@ Deno.serve(async (req) => {
     targetProfile.role !== 'admin' ||
     targetProfile.institute_id !== instituteRaw
   ) {
-    return json({ error: 'admin_not_found' }, 404);
+    return json(req, { error: 'admin_not_found' }, 404);
   }
 
   const { data: authUser, error: authErr } = await admin.auth.admin.getUserById(targetUserId);
   const email = authUser?.user?.email?.trim().toLowerCase();
   if (authErr || !email) {
-    return json({ error: 'admin_not_found' }, 404);
+    return json(req, { error: 'admin_not_found' }, 404);
   }
 
   const password = randomTempPassword();
   const { error: updateErr } = await admin.auth.admin.updateUserById(targetUserId, { password });
   if (updateErr) {
-    return json({ error: 'password_update_failed', detail: updateErr.message }, 500);
+    return json(req, { error: 'password_update_failed', detail: updateErr.message }, 500);
   }
 
   const cleared = await clearStaffTempPasswordExpiry(admin, targetUserId);
   if (!cleared.ok) {
-    return json({ error: 'profile_update_failed', detail: cleared.detail }, 500);
+    return json(req, { error: 'profile_update_failed', detail: cleared.detail }, 500);
   }
 
   const fullName = typeof targetProfile.full_name === 'string' ? targetProfile.full_name.trim() : '';
@@ -128,7 +121,7 @@ Deno.serve(async (req) => {
 
   const sent = await sendHtmlEmailViaResend({
     to: email,
-    subject: 'Your XEN institute admin credentials',
+    subject: 'Your MyTuition institute admin credentials',
     html: emailHtml,
   });
 
@@ -140,7 +133,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  return json({
+  return json(req, {
     ok: true,
     email_sent: sent.ok,
     email_skip_reason: sent.ok ? null : sent.skippedReason,

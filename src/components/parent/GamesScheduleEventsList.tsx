@@ -14,6 +14,7 @@ import {
 } from '@/src/services/studentGamesScheduleApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
+import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import {
   parentBrandBlue,
   parentBrandBlueDark,
@@ -254,8 +255,8 @@ export default memo(GamesScheduleEventsList);
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 0,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: PAGE_CONTENT_TOP,
   },
   listContentEmpty: {
     flexGrow: 1,
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 999,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   chipText: {
     fontSize: 12,

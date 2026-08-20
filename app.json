@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "XEN",
+    "name": "MyTuition",
     "slug": "Wovello-Education",
-    "version": "1.3.0",
+    "version": "1.3.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "xen",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "com.xen.education",
-      "versionCode": 3,
+      "versionCode": 4,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
@@ -25,7 +25,7 @@
         "android.permission.REQUEST_INSTALL_PACKAGES"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#041830",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -44,14 +44,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow XEN to access your photos to attach NIC images.",
-          "cameraPermission": "Allow XEN to use the camera to capture NIC images."
+          "photosPermission": "Allow MyTuition to access your photos to attach NIC images.",
+          "cameraPermission": "Allow MyTuition to use the camera to capture NIC images."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow XEN to use the camera to scan student XEN IDs (QR)."
+          "cameraPermission": "Allow MyTuition to use the camera to scan student IDs (QR)."
         }
       ],
       [
@@ -60,17 +60,15 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#F7FAFF"
         }
       ],
       "expo-asset",
+      "expo-video",
       [
         "expo-notifications",
         {
-          "icon": "./assets/notifications/graduation-cap-small.png",
+          "icon": "./assets/notifications/wovello-notification-avatar.png",
           "color": "#2A9D8F",
           "defaultChannel": "xen_notifications"
         }

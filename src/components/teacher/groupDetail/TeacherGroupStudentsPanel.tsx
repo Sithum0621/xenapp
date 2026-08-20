@@ -4,19 +4,23 @@ import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@/src/theme/Text';
+import { TextInput } from '@/src/theme/TextInput';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import TeacherStudentQrScanner from '@/src/components/teacher/groupDetail/TeacherStudentQrScanner';
 import {
   deletePersonalRosterEntry,
   fetchInstituteStudents,
   fetchPersonalRoster,
 } from '@/src/services/teacherGroupWorkspaceApi';
-import { teacherStudentEnrollLink } from '@/src/services/teacherStudentEnrollApi';
+import { teacherStudentEnrollAddByNameMobile } from '@/src/services/teacherStudentEnrollApi';
 import { paramString, type TeacherGroupRouteContext } from '@/src/utils/teacherGroupRouteParams';
+import {
+  parseSriLankaMobile,
+  sanitizeSriLankaMobileInput,
+} from '@/src/utils/sriLankaMobile';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 const TEXT_MUTED = '#64748B';
@@ -39,6 +43,8 @@ export default function TeacherGroupStudentsPanel({ ctx }: Props) {
 
   const [scanOpen, setScanOpen] = useState(false);
   const [linkBusy, setLinkBusy] = useState(false);
+  const [studentName, setStudentName] = useState('');
+  const [linkMobile, setLinkMobile] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,7 +76,16 @@ export default function TeacherGroupStudentsPanel({ ctx }: Props) {
   const rows = ctx.source === 'institute' ? instituteRows : personalRows;
 
   const openAdd = () => {
+    setStudentName('');
+    setLinkMobile('');
     setScanOpen(true);
+  };
+
+  const closeAdd = () => {
+    if (linkBusy) return;
+    setScanOpen(false);
+    setStudentName('');
+    setLinkMobile('');
   };
 
   const enrollErrorMessage = (code: string | undefined) => {
@@ -95,7 +110,9 @@ export default function TeacherGroupStudentsPanel({ ctx }: Props) {
                       ? 'enrollErrSession'
                       : code === 'xen_id_failed'
                         ? 'enrollErrXenId'
-                        : code === 'server_misconfigured'
+                        : code === 'card_owned_by_other'
+                          ? 'enrollErrCardOwned'
+                          : code === 'server_misconfigured'
                           ? 'enrollErrGeneric'
                           : code === 'signup_failed' ||
                               code === 'enroll_failed' ||
@@ -105,27 +122,42 @@ export default function TeacherGroupStudentsPanel({ ctx }: Props) {
     return gd(key);
   };
 
-  const submitLinkedId = async (studentUserId: string) => {
+  const submitAddStudent = async () => {
+    const name = studentName.trim();
+    const phone = parseSriLankaMobile(linkMobile);
+    if (!name || !phone) {
+      appAlert(gd('registerValidationTitle'), gd('addStudentNameMobileRequired'));
+      return;
+    }
+
     setLinkBusy(true);
     try {
-      const { ok, error: err } = await teacherStudentEnrollLink({
+      const result = await teacherStudentEnrollAddByNameMobile({
         group_source: groupSource(ctx),
         group_id: ctx.groupId,
-        student_user_id: studentUserId,
+        full_name: name,
+        mobile_number: phone,
       });
 
-      if (!ok) {
-        appAlert(gd('workspaceError'), enrollErrorMessage(err));
+      if (!result.ok) {
+        const detail =
+          typeof result.detail === 'string' && result.detail.trim()
+            ? `\n(${result.detail.trim()})`
+            : result.error
+              ? `\n(${result.error})`
+              : '';
+        appAlert(gd('workspaceError'), `${enrollErrorMessage(result.error)}${detail}`);
         return;
       }
 
-      appAlert(gd('linkSuccessTitle'), gd('linkSuccessBody'));
+      setScanOpen(false);
+      setStudentName('');
+      setLinkMobile('');
       void load();
     } catch {
       appAlert(gd('workspaceError'), gd('enrollErrNetwork'));
     } finally {
       setLinkBusy(false);
-      setScanOpen(false);
     }
   };
 
@@ -167,8 +199,6 @@ export default function TeacherGroupStudentsPanel({ ctx }: Props) {
         </View>
       ) : null}
 
-      <Text style={styles.banner}>{gd('instituteRosterHint')}</Text>
-
       <Pressable onPress={openAdd} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.9 }]}>
         <Ionicons name="person-add-outline" size={20} color={BRAND_BLUE} />
         <Text style={styles.addBtnText}>{gd('addStudent')}</Text>
@@ -199,9 +229,9 @@ export default function TeacherGroupStudentsPanel({ ctx }: Props) {
         ))
       )}
 
-      <Modal visible={scanOpen} transparent animationType="fade" onRequestClose={() => !linkBusy && setScanOpen(false)}>
+      <Modal visible={scanOpen} transparent animationType="fade" onRequestClose={closeAdd}>
         <View style={styles.modalRoot}>
-          <Pressable style={styles.modalBackdrop} onPress={() => !linkBusy && setScanOpen(false)} />
+          <Pressable style={styles.modalBackdrop} onPress={closeAdd} />
           <View style={[styles.modalCard, styles.modalCardTall]}>
             {linkBusy ? (
               <View style={styles.linkBusy}>
@@ -209,15 +239,46 @@ export default function TeacherGroupStudentsPanel({ ctx }: Props) {
                 <Text style={styles.linkBusyText}>{gd('linkEnrolling')}</Text>
               </View>
             ) : (
-              <TeacherStudentQrScanner
-                onClose={() => setScanOpen(false)}
-                onParsedId={(id) => void submitLinkedId(id)}
-              />
+              <View style={styles.mobileStep}>
+                <Text style={styles.mobileTitle}>{gd('addStudent')}</Text>
+                <Text style={styles.mobileLabel}>{gd('addStudentNameLabel')}</Text>
+                <TextInput
+                  value={studentName}
+                  onChangeText={setStudentName}
+                  placeholder={gd('addStudentNamePlaceholder')}
+                  autoCapitalize="words"
+                  autoComplete="off"
+                  textContentType="none"
+                  style={styles.mobileInput}
+                />
+                <Text style={styles.mobileLabel}>{gd('linkMobileLabel')}</Text>
+                <TextInput
+                  value={linkMobile}
+                  onChangeText={(text) => setLinkMobile(sanitizeSriLankaMobileInput(text))}
+                  placeholder={gd('linkMobilePlaceholder')}
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="tel"
+                  textContentType="telephoneNumber"
+                  style={styles.mobileInput}
+                />
+                <View style={styles.mobileActions}>
+                  <Pressable onPress={closeAdd} style={styles.mobileSecondary} disabled={linkBusy}>
+                    <Text style={styles.mobileSecondaryText}>{t('teacherDashboard.groupsCancel')}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void submitAddStudent()}
+                    disabled={linkBusy}
+                    style={[styles.mobilePrimary, linkBusy && { opacity: 0.7 }]}>
+                    <Text style={styles.mobilePrimaryText}>{gd('addStudent')}</Text>
+                  </Pressable>
+                </View>
+              </View>
             )}
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
@@ -236,13 +297,6 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 12, color: '#991B1B', fontWeight: '600' },
   retrySmall: { marginTop: 8, alignSelf: 'flex-start' },
   retrySmallText: { color: BRAND_BLUE, fontWeight: '800', fontSize: 13 },
-  banner: {
-    fontSize: 13,
-    color: TEXT_MUTED,
-    fontWeight: '600',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -252,7 +306,7 @@ const styles = StyleSheet.create({
     borderColor: BRAND_BLUE,
     borderRadius: 12,
     paddingVertical: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   addBtnText: { fontSize: 15, fontWeight: '800', color: BRAND_BLUE },
   meta: {
@@ -315,4 +369,35 @@ const styles = StyleSheet.create({
   modalCardTall: { maxHeight: '92%' },
   linkBusy: { paddingVertical: 40, alignItems: 'center', gap: 12 },
   linkBusyText: { fontSize: 14, fontWeight: '700', color: TEXT_MUTED },
+  mobileStep: { gap: 8 },
+  mobileTitle: { fontSize: 17, fontWeight: '800', color: BRAND_BLUE_DARK },
+  mobileLabel: { fontSize: 12, fontWeight: '700', color: TEXT_MUTED, marginTop: 4 },
+  mobileInput: {
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    backgroundColor: PAGE_SURFACE,
+    color: BRAND_BLUE_DARK,
+  },
+  mobileActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  mobileSecondary: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  mobileSecondaryText: { fontWeight: '800', color: BRAND_BLUE_DARK, fontSize: 14 },
+  mobilePrimary: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: BRAND_BLUE,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  mobilePrimaryText: { fontWeight: '800', color: '#FFFFFF', fontSize: 14 },
 });

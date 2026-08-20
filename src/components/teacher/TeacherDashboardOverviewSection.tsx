@@ -7,6 +7,7 @@ import { TextInput } from '@/src/theme/TextInput';
 
 import { NativeFluidFlatList } from '@/src/components/layout/NativeFluidFlatList';
 import ScrollFriendlyPressable from '@/src/components/layout/ScrollFriendlyPressable';
+import TeacherCreatePersonalClassModal from '@/src/components/teacher/TeacherCreatePersonalClassModal';
 import TeacherDashboardTodaySchedule from '@/src/components/teacher/TeacherDashboardTodaySchedule';
 import { SessionCacheKeys } from '@/src/services/sessionDataCache';
 import { useSessionCachedQuery } from '@/src/hooks/useSessionCachedQuery';
@@ -17,10 +18,12 @@ import {
 } from '@/src/services/teacherDashboardApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
+import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { formatBillingMonthLabel } from '@/src/utils/classPaymentStatus';
+import { appSurface } from '@/src/theme/appBrandPalette';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 const TEXT_MUTED = '#64748B';
@@ -129,6 +132,7 @@ function TeacherDashboardOverviewSection({
   const error = overviewResult?.error ?? queryError;
   const partialWarning = overviewResult?.partialWarning ?? null;
   const [searchQuery, setSearchQuery] = useState('');
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   const monthLabel = useMemo(
     () =>
@@ -246,31 +250,35 @@ function TeacherDashboardOverviewSection({
                   </Text>
                 </View>
               </View>
-              <View style={styles.financeCardHalf}>
-                <View style={styles.financeCardInner}>
-                  <View style={[styles.financeCardTop, styles.financeCardTopHalf]}>
-                    <Ionicons name="card-outline" size={18} color={VIOLET} />
-                    <Text style={styles.financeCardLabel} numberOfLines={2}>
-                      {ov('amountToPay')}
-                    </Text>
-                  </View>
-                  <Text style={[styles.financeCardValueCompact, { color: VIOLET }]} numberOfLines={1}>
-                    Rs. {formatMoney(overview.amountToPayCents, i18n.language)}
+              <ScrollFriendlyPressable
+                accessibilityRole="button"
+                accessibilityLabel={ov('openSmsCreditA11y')}
+                onPress={() => router.push(appHref(AppRoutes.teacherSmsCredit))}
+                style={styles.financeCardHalf}
+                innerStyle={styles.financeCardInner}>
+                <View style={[styles.financeCardTop, styles.financeCardTopHalf]}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={VIOLET} />
+                  <Text style={styles.financeCardLabel} numberOfLines={2}>
+                    {ov('smsCredit')}
                   </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#94A3B8" style={styles.financeCardChevron} />
                 </View>
-              </View>
+                <Text style={[styles.financeCardValueCompact, { color: VIOLET }]} numberOfLines={1}>
+                  {(overview.smsCreditBalance ?? 0).toLocaleString('en-LK')}
+                </Text>
+              </ScrollFriendlyPressable>
             </View>
           </View>
 
           <View style={styles.quickActionsRow}>
             <ScrollFriendlyPressable
               accessibilityRole="button"
-              accessibilityLabel={ov('paymentsButtonA11y')}
-              onPress={() => router.push(appHref(AppRoutes.teacherPayments))}
+              accessibilityLabel={ov('ownClassCardsButtonA11y')}
+              onPress={() => router.push(appHref(AppRoutes.teacherClassCards))}
               style={styles.quickActionBtn}
               innerStyle={styles.quickActionBtnInner}>
-              <Ionicons name="wallet-outline" size={20} color={BRAND_BLUE} />
-              <Text style={styles.quickActionLabel}>{ov('paymentsButton')}</Text>
+              <Ionicons name="id-card-outline" size={20} color={BRAND_BLUE} />
+              <Text style={styles.quickActionLabel}>{ov('ownClassCardsButton')}</Text>
             </ScrollFriendlyPressable>
             <ScrollFriendlyPressable
               accessibilityRole="button"
@@ -282,6 +290,15 @@ function TeacherDashboardOverviewSection({
               <Text style={styles.quickActionLabel}>{ov('myTimetableButton')}</Text>
             </ScrollFriendlyPressable>
           </View>
+          <ScrollFriendlyPressable
+            accessibilityRole="button"
+            accessibilityLabel={ov('linkStudentWithCardButtonA11y')}
+            onPress={() => router.push(appHref(AppRoutes.teacherLinkStudentCard))}
+            style={styles.quickActionBtn}
+            innerStyle={styles.quickActionBtnInner}>
+            <Ionicons name="qr-code-outline" size={20} color={BRAND_BLUE} />
+            <Text style={styles.quickActionLabel}>{ov('linkStudentWithCardButton')}</Text>
+          </ScrollFriendlyPressable>
 
           <TeacherDashboardTodaySchedule />
         </View>
@@ -323,7 +340,18 @@ function TeacherDashboardOverviewSection({
 
         {showClasses ? (
           <>
-            <Text style={styles.sectionTitle}>{ov('classesTitle')}</Text>
+            <View style={styles.classesHeaderRow}>
+              <Text style={[styles.sectionTitle, styles.classesHeaderTitle]}>{ov('classesTitle')}</Text>
+              <ScrollFriendlyPressable
+                accessibilityRole="button"
+                accessibilityLabel={t('teacherDashboard.chatsCreateClass')}
+                onPress={() => setCreateModalVisible(true)}
+                style={styles.createChip}
+                innerStyle={styles.createChipInner}>
+                <Ionicons name="add" size={18} color={appSurface} />
+                <Text style={styles.createChipText}>{t('teacherDashboard.chatsCreateClass')}</Text>
+              </ScrollFriendlyPressable>
+            </View>
 
             <View style={styles.statsRow}>
               <View style={styles.statBlock}>
@@ -374,6 +402,7 @@ function TeacherDashboardOverviewSection({
     monthLabel,
     i18n.language,
     ov,
+    t,
     showClassSearch,
     searchActive,
     searchQuery,
@@ -436,11 +465,19 @@ function TeacherDashboardOverviewSection({
           <Ionicons name="book-outline" size={28} color={TEXT_MUTED} />
           <Text style={styles.emptyTitle}>{ov('emptyClassesTitle')}</Text>
           <Text style={styles.emptyBody}>{ov('emptyClassesBody')}</Text>
+          <ScrollFriendlyPressable
+            accessibilityRole="button"
+            onPress={() => setCreateModalVisible(true)}
+            style={styles.emptyCreateBtn}
+            innerStyle={styles.emptyCreateBtnInner}>
+            <Ionicons name="add" size={18} color={appSurface} />
+            <Text style={styles.emptyCreateBtnText}>{t('teacherDashboard.chatsCreateClass')}</Text>
+          </ScrollFriendlyPressable>
         </View>
       );
     }
     return null;
-  }, [showClasses, loading, error, overview, ov, searchActive, displayedClasses.length, allClasses.length]);
+  }, [showClasses, loading, error, overview, ov, t, searchActive, displayedClasses.length, allClasses.length]);
 
   return (
     <>
@@ -461,6 +498,13 @@ function TeacherDashboardOverviewSection({
         ]}
       />
 
+      {showClasses ? (
+        <TeacherCreatePersonalClassModal
+          visible={createModalVisible}
+          onClose={() => setCreateModalVisible(false)}
+          onCreated={() => refresh(true)}
+        />
+      ) : null}
     </>
   );
 }
@@ -470,8 +514,8 @@ export default memo(TeacherDashboardOverviewSection);
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   listContent: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: PAGE_CONTENT_TOP,
   },
   listContentEmpty: { flexGrow: 1 },
   listSep: { height: 10 },
@@ -620,6 +664,40 @@ const styles = StyleSheet.create({
     color: BRAND_BLUE_DARK,
     marginTop: 6,
   },
+  classesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 6,
+  },
+  classesHeaderTitle: {
+    marginTop: 0,
+    flex: 1,
+    minWidth: 0,
+  },
+  createChip: { borderRadius: 999 },
+  createChipInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: BRAND_BLUE,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+  },
+  createChipText: { color: appSurface, fontWeight: '800', fontSize: 13 },
+  emptyCreateBtn: { marginTop: 10, borderRadius: 999 },
+  emptyCreateBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: BRAND_BLUE,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 999,
+  },
+  emptyCreateBtnText: { color: appSurface, fontWeight: '800', fontSize: 14 },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -708,7 +786,7 @@ const styles = StyleSheet.create({
   },
   badgePill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,

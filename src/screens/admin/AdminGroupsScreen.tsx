@@ -20,8 +20,8 @@ import {
 } from '@/src/services/instituteAdminLectureGroupsApi';
 import { instituteAdminListTeachers, type InstituteTeacherRow } from '@/src/services/instituteAdminTeachersApi';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
@@ -234,10 +234,10 @@ export default function AdminGroupsScreen() {
         .join('');
       return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title><style>
         body{font-family:system-ui,-apple-system,sans-serif;padding:24px;color:#0f172a}
-        h1{font-size:20px;margin:0 0 16px;color:#0e2f63}
+        h1{font-size:20px;margin:0 0 16px;color:#00101F}
         table{border-collapse:collapse;width:100%;font-size:13px}
         th,td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left;vertical-align:top}
-        th{background:#f1f5f9;font-weight:700;color:#0e2f63}
+        th{background:#f1f5f9;font-weight:700;color:#00101F}
         tr:nth-child(even){background:#f8fafc}
       </style></head><body><h1>${title}</h1><table><thead><tr>${h.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
     },

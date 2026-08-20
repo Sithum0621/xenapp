@@ -8,7 +8,7 @@ import {
   type AdminDashboardActivityItem,
 } from '@/src/services/instituteAdminDashboardApi';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const SUBTLE_BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
@@ -37,7 +37,7 @@ function activityColor(kind: AdminDashboardActivityItem['kind']): string {
     case 'attendance_marked':
       return '#047857';
     case 'teacher_assigned':
-      return '#123B7A';
+      return '#041830';
     default:
       return '#B45309';
   }
@@ -72,7 +72,7 @@ export default function AdminDashboardActivityFeed({ items, loading, error }: Pr
 
       {loading && items.length === 0 ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator color="#123B7A" size="small" />
+          <ActivityIndicator color="#041830" size="small" />
         </View>
       ) : error && items.length === 0 ? (
         <View style={styles.emptyBox}>

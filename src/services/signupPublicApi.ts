@@ -9,6 +9,7 @@ import { supabase } from '@/src/services/supabaseClient';
 export type SignupPublicPayload = {
   email?: string;
   mobile_number?: string;
+  mobile_otp_token?: string;
   password: string;
   full_name: string;
   role: string;

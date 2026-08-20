@@ -12,7 +12,7 @@ export type SendHtmlEmailResult =
  * Resend only delivers from `onboarding@resend.dev` to the Resend account email.
  * Production sender; override with secret `RESEND_FROM_EMAIL` if needed.
  */
-const DEFAULT_RESEND_FROM = 'XEN <noreply@wovello.com>';
+const DEFAULT_RESEND_FROM = 'MyTuition <noreply@wovello.com>';
 
 /** Resend API key from environment only (e.g. RESEND_API_KEY secret). */
 export function getResendApiKeyFromEnv(): string | undefined {

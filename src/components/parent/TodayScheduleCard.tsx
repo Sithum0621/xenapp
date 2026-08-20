@@ -19,8 +19,8 @@ import {
 } from '@/src/services/studentClassesApi';
 import { FontFamily } from '@/src/theme/fonts';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       android: { elevation: 3 },
       default: {
-        shadowColor: '#0E2F63',
+        shadowColor: '#00101F',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.08,
         shadowRadius: 18,

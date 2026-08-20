@@ -34,11 +34,8 @@ const THEMES: Record<DashboardTileAccent, ThemeConfig> = {
 
 const WEB_TILE_TRANSITION = Platform.select({
   web: {
-    // @ts-expect-error — web-only CSS
     transitionProperty: 'box-shadow',
-    // @ts-expect-error
     transitionDuration: '0.3s',
-    // @ts-expect-error
     transitionTimingFunction: 'ease',
   },
   default: {},
@@ -49,7 +46,6 @@ function tileShadowStyle(accent: DashboardTileAccent, active: boolean): ViewStyl
 
   if (Platform.OS === 'web') {
     return {
-      // @ts-expect-error — web-only CSS
       boxShadow: active ? `0 0 36px ${glow}` : parentTileRestShadow,
       ...WEB_TILE_TRANSITION,
     } as ViewStyle;
@@ -157,9 +153,7 @@ export default function DashboardPremiumTile({
       enabled={!disabled}
       onPress={disabled ? undefined : onPress}
       onActiveStateChange={(active) => setPressed(active)}
-      // @ts-expect-error — web hover glow on dashboard tiles
       onHoverIn={() => setHovered(true)}
-      // @ts-expect-error
       onHoverOut={() => setHovered(false)}
       style={style}
       innerStyle={[

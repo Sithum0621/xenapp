@@ -80,7 +80,20 @@ export function scrollSafePressHandler<T extends (...args: never[]) => void>(
   if (!handler) return undefined;
   const wrapped = ((...args: Parameters<T>) => {
     if (shouldSuppressScrollConflictPress()) return;
+    blurWebActiveElement();
     handler(...args);
   }) as T;
   return wrapped;
+}
+
+/**
+ * Drop keyboard/pointer focus before React Navigation hides the previous screen
+ * with aria-hidden (avoids "descendant retained focus" console errors on web).
+ */
+export function blurWebActiveElement(): void {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+  const el = document.activeElement;
+  if (el instanceof HTMLElement && el !== document.body && typeof el.blur === 'function') {
+    el.blur();
+  }
 }

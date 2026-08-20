@@ -12,8 +12,8 @@ import { registerParentHouseholdChild } from '@/src/services/parentRegisterChild
 import { fetchParentStudents } from '@/src/services/parentStudentsApi';
 import { maybeShowAppLockRegistrationPrompt } from '@/src/utils/appLockRegistrationPrompt';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
@@ -58,13 +58,13 @@ export default function AddStudentModal({ visible, onClose, onLinked }: AddStude
   const [childName, setChildName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successXenId, setSuccessXenId] = useState<string | null>(null);
+  const [successRegistered, setSuccessRegistered] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setChildName('');
       setErrorMessage(null);
-      setSuccessXenId(null);
+      setSuccessRegistered(false);
       setSubmitting(false);
     }
   }, [visible]);
@@ -101,7 +101,7 @@ export default function AddStudentModal({ visible, onClose, onLinked }: AddStude
       return;
     }
 
-    setSuccessXenId(result.xenStudentId);
+    setSuccessRegistered(true);
     onLinked(result.studentUserId);
 
     if (isFirstHouseholdChild) {
@@ -151,7 +151,7 @@ export default function AddStudentModal({ visible, onClose, onLinked }: AddStude
               placeholder={t('parentDashboard.registerChildNamePlaceholder')}
               placeholderTextColor="#94A3B8"
               autoCapitalize="words"
-              editable={!submitting && !successXenId}
+              editable={!submitting && !successRegistered}
               onSubmitEditing={() => void submitRegister()}
               returnKeyType="done"
               style={styles.input}
@@ -159,11 +159,11 @@ export default function AddStudentModal({ visible, onClose, onLinked }: AddStude
 
             <Text style={styles.hint}>{t('parentDashboard.registerChildHint')}</Text>
 
-            {successXenId ? (
+            {successRegistered ? (
               <View style={styles.successBox}>
                 <Ionicons name="checkmark-circle" size={18} color="#15803D" />
                 <Text style={styles.successText}>
-                  {t('parentDashboard.registerChildSuccess', { xenId: successXenId })}
+                  {t('parentDashboard.registerChildSuccess')}
                 </Text>
               </View>
             ) : null}
@@ -189,10 +189,10 @@ export default function AddStudentModal({ visible, onClose, onLinked }: AddStude
                 submitting && styles.btnDisabled,
               ]}>
               <Text style={styles.secondaryBtnText}>
-                {successXenId ? t('parentDashboard.registerChildDone') : t('parentDashboard.addStudentCancel')}
+                {successRegistered ? t('parentDashboard.registerChildDone') : t('parentDashboard.addStudentCancel')}
               </Text>
             </Pressable>
-            {!successXenId ? (
+            {!successRegistered ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={() => void submitRegister()}

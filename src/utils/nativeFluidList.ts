@@ -1,4 +1,4 @@
-import { Platform, type FlatListProps } from 'react-native';
+import { Platform } from 'react-native';
 
 
 
@@ -14,39 +14,7 @@ import { SCROLL_MOMENTUM_PROPS } from '@/src/utils/scrollViewDefaults';
 
  */
 
-export const NATIVE_FLUID_LIST_PROPS: Pick<
-
-  FlatListProps<unknown>,
-
-  | 'showsVerticalScrollIndicator'
-
-  | 'keyboardShouldPersistTaps'
-
-  | 'keyboardDismissMode'
-
-  | 'nestedScrollEnabled'
-
-  | 'scrollEventThrottle'
-
-  | 'decelerationRate'
-
-  | 'removeClippedSubviews'
-
-  | 'bounces'
-
-  | 'alwaysBounceVertical'
-
-  | 'overScrollMode'
-
-  | 'directionalLockEnabled'
-
-  | 'delaysContentTouches'
-
-  | 'canCancelContentTouches'
-
-  | 'disableIntervalMomentum'
-
-> = {
+export const NATIVE_FLUID_LIST_PROPS = {
 
   ...SCROLL_MOMENTUM_PROPS,
 

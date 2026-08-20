@@ -1,8 +1,9 @@
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
 import { useAppLock } from '@/src/context/AppLockContext';
+import { isPoliciesPath } from '@/src/navigation/publicRoutes';
 import { clearSessionDataCache } from '@/src/services/sessionDataCache';
 import {
   clearSessionCountdown,
@@ -14,11 +15,13 @@ import { supabase } from '@/src/services/supabaseClient';
 import { isStaleAuthSessionError } from '@/src/utils/authSessionErrors';
 
 /**
- * Signs users out after one hour of session age unless app lock (PIN) is active.
- * When app lock protects the device, session timeout is skipped — PIN gate handles return visits.
+ * Signs users out after 10 minutes of idle session age unless app lock (PIN) is active.
+ * When app lock protects the device, session timeout is skipped — PIN gate handles return
+ * visits after ~10 minutes away from the app.
  */
 export default function SessionTimeoutGuard() {
   const appRouter = useRouter();
+  const pathname = usePathname();
   const { status, loading } = useAppLock();
   const appLockActive = Boolean(status?.enabled && status?.pinIsSet);
 
@@ -26,6 +29,12 @@ export default function SessionTimeoutGuard() {
     if (loading) return;
 
     let signOutInProgress = false;
+
+    const goToLoginUnlessPublicPolicies = () => {
+      // Public legal pages stay readable after sign-out / for guests.
+      if (isPoliciesPath(pathname)) return;
+      appRouter.replace('/login');
+    };
 
     const forceLogout = async () => {
       if (signOutInProgress) return;
@@ -36,7 +45,7 @@ export default function SessionTimeoutGuard() {
       } catch {
         await supabase.auth.signOut().catch(() => {});
       }
-      appRouter.replace('/login');
+      goToLoginUnlessPublicPolicies();
       signOutInProgress = false;
     };
 
@@ -56,7 +65,7 @@ export default function SessionTimeoutGuard() {
       if (event === 'SIGNED_OUT') {
         clearSessionCountdown();
         clearSessionDataCache();
-        appRouter.replace('/login');
+        goToLoginUnlessPublicPolicies();
         return;
       }
 
@@ -94,7 +103,7 @@ export default function SessionTimeoutGuard() {
         clearSessionCountdown();
       }
     };
-  }, [appRouter, appLockActive, loading]);
+  }, [appRouter, pathname, appLockActive, loading]);
 
   return null;
 }

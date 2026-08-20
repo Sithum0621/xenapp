@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       android: { elevation: 12 },
       default: {
-        shadowColor: '#0E2F63',
+        shadowColor: '#00101F',
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.08,
         shadowRadius: 12,
@@ -78,9 +78,7 @@ const styles = StyleSheet.create({
   },
   dockWeb: Platform.select({
     web: {
-      // @ts-expect-error -- web-only
       boxShadow: '0 -8px 24px rgba(14, 47, 99, 0.10)',
-      // @ts-expect-error
       position: 'fixed',
     },
     default: {},

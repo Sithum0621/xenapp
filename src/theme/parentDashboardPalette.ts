@@ -3,29 +3,31 @@
  * so the UI stays recognizable without feeling loud.
  */
 
-/** Primary text (softened navy). */
-export const parentInk = '#1A3D6B';
+/** Primary text (MyTuition navy). */
+export const parentInk = '#041830';
 /** Secondary text on white panels — darkened for WCAG AA contrast on light backgrounds. */
 export const parentInkSoft = '#465668';
 export const parentInkMuted = '#5A6578';
-export const parentBorder = '#E2E8F0';
+export const parentBorder = '#D6E2F0';
 export const parentSurface = '#FFFFFF';
-export const parentSurfaceAlt = '#F4F6FA';
+export const parentSurfaceAlt = '#F0F5FC';
 
-/** Brand blue — toned from #123B7A / #0E2F63. */
-export const parentBrandBlue = '#2E5494';
-export const parentBrandBlueDark = '#1A3D6B';
+/** Brand navy — aligned with MyTuition logo. */
+export const parentBrandBlue = '#041830';
+export const parentBrandBlueDark = '#00101F';
+/** Royal blue — links / interactive accents. */
+export const parentBrandRoyal = '#1E4FD6';
 
-/** Greeting name accent — toned purple from #5B3A8A. */
-export const parentGreetingAccent = '#6B5289';
+/** Greeting name accent — logo “My” azure. */
+export const parentGreetingAccent = '#1E88E5';
 
 export const parentPresent = '#3A9A6E';
 export const parentAbsent = '#C45656';
 export const parentTrack = '#E4EBF2';
 
-/** Student tab selection — soft blue wash (was #D8E5FF / #EEF4FF). */
-export const parentTabActiveStart = '#D4E3F8';
-export const parentTabActiveEnd = '#EBF2FC';
+/** Student tab selection — soft azure wash. */
+export const parentTabActiveStart = '#BBDEFB';
+export const parentTabActiveEnd = '#E3F2FD';
 
 /** Today's schedule time strip — soft green (was #DFF3C8). */
 export const parentScheduleTimeBg = '#E4F0D8';
@@ -96,7 +98,7 @@ export const parentTileRestShadow = '0 4px 18px rgba(15, 23, 42, 0.06)';
 
 export const parentIconRing = 'rgba(255, 255, 255, 0.26)';
 
-/** Bottom nav active indicator — softened brand blue. */
+/** Bottom nav active indicator — soft royal blue. */
 export const parentNavActive = '#3D6BA8';
 /** Bottom nav active icon tint — very subtle, no hard pill. */
-export const parentNavActiveTint = 'rgba(46, 84, 148, 0.06)';
+export const parentNavActiveTint = 'rgba(30, 79, 214, 0.08)';

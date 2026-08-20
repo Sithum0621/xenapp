@@ -9,8 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppLock } from '@/src/context/AppLockContext';
 import { appLockVerifyPin } from '@/src/services/appLockApi';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 
 export default function AppLockGate() {
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 28,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',

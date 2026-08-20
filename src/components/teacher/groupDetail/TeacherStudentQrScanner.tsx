@@ -7,22 +7,35 @@ import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { parseXenIdFromScan } from '@/src/utils/xenQrPayload';
+import { parseClassCardScan, parseXenIdFromScan } from '@/src/utils/xenQrPayload';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 const TEXT_MUTED = '#64748B';
 
 type Props = {
   onParsedId: (studentUserId: string) => void;
+  /** Teacher-issued class card (`mtc1_` / welcome?card=). */
+  onParsedIssuedCard?: (token: string) => void;
+  /** Hide the default scan title/hint (parent screen already explains the step). */
+  hideIntro?: boolean;
+  /** Only accept teacher-issued class card QRs (not student UUID IDs). */
+  issuedCardsOnly?: boolean;
   onClose?: () => void;
   /** Minimal camera-only UI for embedded attendance sessions. */
   compact?: boolean;
 };
 
-export default function TeacherStudentQrScanner({ onParsedId, onClose, compact = false }: Props) {
+export default function TeacherStudentQrScanner({
+  onParsedId,
+  onParsedIssuedCard,
+  onClose,
+  compact = false,
+  hideIntro = false,
+  issuedCardsOnly = false,
+}: Props) {
   const { t } = useTranslation();
   const gd = (k: string) => t(`teacherDashboard.groupDetail.${k}`);
   const [permission, requestPermission] = useCameraPermissions();
@@ -40,12 +53,35 @@ export default function TeacherStudentQrScanner({ onParsedId, onClose, compact =
   const fireIfValid = useCallback(
     (raw: string) => {
       if (lockRef.current) return;
-      const id = parseXenIdFromScan(raw);
+      if (!compact) {
+        const card = parseClassCardScan(raw);
+        if (card?.issuedCardToken) {
+          if (!onParsedIssuedCard) return;
+          lockRef.current = true;
+          onParsedIssuedCard(card.issuedCardToken);
+          return;
+        }
+        if (issuedCardsOnly) return;
+        if (card?.studentUserId) {
+          lockRef.current = true;
+          onParsedId(card.studentUserId);
+          return;
+        }
+        return;
+      }
+      const compactCard = parseClassCardScan(raw);
+      if (compactCard?.issuedCardToken) {
+        lockRef.current = true;
+        if (onParsedIssuedCard) onParsedIssuedCard(compactCard.issuedCardToken);
+        else onParsedId(compactCard.issuedCardToken);
+        return;
+      }
+      const id = compactCard?.studentUserId ?? parseXenIdFromScan(raw);
       if (!id) return;
       lockRef.current = true;
       onParsedId(id);
     },
-    [onParsedId],
+    [compact, onParsedId, onParsedIssuedCard, issuedCardsOnly],
   );
 
   const onBarcodeScanned = useCallback(
@@ -57,6 +93,29 @@ export default function TeacherStudentQrScanner({ onParsedId, onClose, compact =
 
   const handlePasteSubmit = () => {
     if (lockRef.current) return;
+    if (!compact) {
+      const card = parseClassCardScan(pasteValue);
+      if (card?.issuedCardToken) {
+        if (!onParsedIssuedCard) {
+          appAlert(gd('scanInvalidTitle'), gd(issuedCardsOnly ? 'scanInvalidBodyIssued' : 'scanInvalidBody'));
+          return;
+        }
+        lockRef.current = true;
+        onParsedIssuedCard(card.issuedCardToken);
+        return;
+      }
+      if (issuedCardsOnly) {
+        appAlert(gd('scanInvalidTitle'), gd(issuedCardsOnly ? 'scanInvalidBodyIssued' : 'scanInvalidBody'));
+        return;
+      }
+      if (card?.studentUserId) {
+        lockRef.current = true;
+        onParsedId(card.studentUserId);
+        return;
+      }
+      appAlert(gd('scanInvalidTitle'), gd('scanInvalidBody'));
+      return;
+    }
     const id = parseXenIdFromScan(pasteValue);
     if (!id) {
       appAlert(gd('scanInvalidTitle'), gd('scanInvalidBody'));
@@ -70,7 +129,7 @@ export default function TeacherStudentQrScanner({ onParsedId, onClose, compact =
 
   return (
     <View style={[styles.wrap, compact && styles.wrapCompact]}>
-      {!compact ? (
+      {!compact && !hideIntro ? (
         <>
           <Text style={styles.title}>{gd('scanXenTitle')}</Text>
           <Text style={styles.hint}>{gd('scanXenHint')}</Text>
@@ -128,7 +187,7 @@ export default function TeacherStudentQrScanner({ onParsedId, onClose, compact =
           <TextInput
             value={pasteValue}
             onChangeText={setPasteValue}
-            placeholder={gd('scanPastePlaceholder')}
+            placeholder={gd(issuedCardsOnly ? 'scanPastePlaceholderIssued' : 'scanPastePlaceholder')}
             placeholderTextColor={TEXT_MUTED}
             autoCapitalize="none"
             autoCorrect={false}

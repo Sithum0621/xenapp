@@ -3,10 +3,12 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import GroupChatAvatar from '@/src/components/parent/chat/GroupChatAvatar';
+import { isAppCommunityTitle } from '@/src/constants/brand';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const BORDER = '#E2E8F0';
 const SURFACE = '#FFFFFF';
@@ -40,7 +42,12 @@ function ChatRoomSubHeader({
         style={({ pressed }) => [styles.backBtn, pressed && styles.backPressed]}>
         <Ionicons name="chevron-back" size={24} color={BRAND_BLUE_DARK} />
       </Pressable>
-      <GroupChatAvatar groupName={groupName} size={36} imageUrl={imageUrl} />
+      <GroupChatAvatar
+        groupName={groupName}
+        size={36}
+        imageUrl={imageUrl}
+        useBrandMark={!imageUrl && isAppCommunityTitle(groupName)}
+      />
       <View style={styles.textCol}>
         <Text style={styles.title} numberOfLines={1}>
           {groupName}
@@ -72,7 +79,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: PAGE_EDGE_INSET,
     paddingVertical: 10,
     backgroundColor: SURFACE,
     borderBottomWidth: StyleSheet.hairlineWidth,

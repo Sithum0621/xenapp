@@ -13,9 +13,10 @@ import {
 } from '@/src/services/teacherTodayScheduleApi';
 import { formatScheduleClockTime } from '@/src/services/instituteAdminDashboardApi';
 import { Text } from '@/src/theme/Text';
+import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
@@ -128,8 +129,8 @@ export default memo(TeacherAttendanceSection);
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: PAGE_CONTENT_TOP,
   },
   sectionTitle: {
     fontSize: 17,

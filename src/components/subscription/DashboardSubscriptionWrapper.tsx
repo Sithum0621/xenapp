@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Text } from '@/src/theme/Text';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { BrandLoader } from '@/src/components/BrandLoader';
 import SubscriptionCountdownGate from '@/src/components/subscription/SubscriptionCountdownGate';
 import {
+  isPaidLike,
   subscriptionChecksBypassForRole,
   subscriptionCountdownVisibleForRole,
   validateSubscriptionAccessForCurrentUser,
@@ -20,9 +21,14 @@ export default function DashboardSubscriptionWrapper({ role, children, fullWidth
   const [loading, setLoading] = useState(true);
   const [bypassSubscription, setBypassSubscription] = useState(false);
   const [profileRole, setProfileRole] = useState<string | null>(null);
-  const [state, setState] = useState<{ expiryDate: string | null; isActive: boolean }>({
+  const [state, setState] = useState<{
+    expiryDate: string | null;
+    isActive: boolean;
+    reason: string | null;
+  }>({
     expiryDate: null,
-    isActive: false,
+    isActive: true,
+    reason: null,
   });
 
   useEffect(() => {
@@ -55,10 +61,11 @@ export default function DashboardSubscriptionWrapper({ role, children, fullWidth
       const { data } = await validateSubscriptionAccessForCurrentUser(userData.user.id);
       if (!mounted) return;
 
+      const reason = data?.reason ?? 'free';
       setState({
-        expiryDate: data?.expiry_date ?? null,
-        // `can_access` is the source of truth from backend validation.
-        isActive: Boolean(data?.can_access),
+        expiryDate: isPaidLike(reason) ? (data?.expiry_date ?? null) : null,
+        isActive: Boolean(data?.can_access ?? true),
+        reason,
       });
       setLoading(false);
     };
@@ -72,7 +79,7 @@ export default function DashboardSubscriptionWrapper({ role, children, fullWidth
   if (loading) {
     return (
       <View style={styles.loaderWrap}>
-        <ActivityIndicator size="large" color="#123B7A" />
+        <BrandLoader size="md" />
       </View>
     );
   }
@@ -93,10 +100,8 @@ export default function DashboardSubscriptionWrapper({ role, children, fullWidth
           role={profileRole ?? role}
           expiryDateIso={state.expiryDate}
           isActive={state.isActive}
+          reason={state.reason}
         />
-      ) : null}
-      {subscriptionCountdownVisibleForRole(profileRole) && !state.expiryDate ? (
-        <Text style={styles.noSubText}>No active subscription found. Please renew your package.</Text>
       ) : null}
     </View>
   );
@@ -115,10 +120,4 @@ const styles = StyleSheet.create({
   contentFullWidth: { alignItems: 'stretch', justifyContent: 'flex-start', width: '100%', flex: 1 },
   bypassContent: { alignItems: 'stretch', justifyContent: 'flex-start', width: '100%', flex: 1 },
   loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  noSubText: {
-    marginTop: 12,
-    textAlign: 'center',
-    fontWeight: '700',
-    color: '#991B1B',
-  },
 });

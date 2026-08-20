@@ -1,32 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Text } from '@/src/theme/Text';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
+import { Text } from '@/src/theme/Text';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
 export default function TeacherSecuritySettings() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => routerBackOrReplace(router, appHref(AppRoutes.teacherDashboard))}
-          style={({ pressed }) => [styles.backRow, pressed && { opacity: 0.75 }]}>
-          <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
-          <Text style={styles.backLabel}>Back</Text>
-        </Pressable>
-        <Text style={styles.title}>Security & Preferences</Text>
-      </View>
-
+    <DashboardScreenShell
+      showBack
+      title={t('teacherDashboard.settingsSecurity', { defaultValue: 'Security & Preferences' })}
+      onBack={() => routerBackOrReplace(router, appHref(AppRoutes.teacherDashboard))}>
       <View style={styles.card}>
         <Text style={styles.subtitle}>Choose a security option.</Text>
 
@@ -58,23 +53,17 @@ export default function TeacherSecuritySettings() {
           <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
         </Pressable>
       </View>
-    </SafeAreaView>
+    </DashboardScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { paddingHorizontal: 16, paddingBottom: 8 },
-  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, alignSelf: 'flex-start' },
-  backLabel: { fontSize: 16, fontWeight: '700', color: BRAND_BLUE_DARK },
-  title: { fontSize: 22, fontWeight: '800', color: BRAND_BLUE_DARK, paddingHorizontal: 8 },
   card: {
-    margin: 16,
     borderWidth: 1.5,
     borderColor: BORDER,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    padding: PAGE_EDGE_INSET,
   },
   subtitle: {
     fontSize: 14,
@@ -100,7 +89,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     alignItems: 'center',
     justifyContent: 'center',
   },

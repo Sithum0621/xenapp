@@ -19,7 +19,7 @@ import {
 const PRESENT_BORDER = '#0F9D58';
 const ABSENT_BORDER = '#B42318';
 const TEXT_MUTED = '#64748B';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 
 const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 

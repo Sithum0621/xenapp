@@ -8,11 +8,11 @@ import { XEN_NOTIFICATION_CHANNEL_ID } from '@/src/push/notificationChannel';
  */
 export async function ensureAndroidNotificationChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync(XEN_NOTIFICATION_CHANNEL_ID, {
-    name: 'XEN',
+    name: 'MyTuition',
     description: 'Class attendance, exams, and account alerts',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#123B7A',
+    lightColor: '#041830',
     sound: 'default',
     enableVibrate: true,
     showBadge: true,

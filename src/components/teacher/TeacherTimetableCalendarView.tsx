@@ -20,8 +20,8 @@ import {
   monthLabel,
 } from '@/src/utils/teacherTimetableCalendar';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const CLASS_DOT = '#15803D';

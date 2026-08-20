@@ -11,7 +11,7 @@ export type NestedInScrollRowsProps<T> = {
   renderItem: (info: { item: T; index: number }) => ReactElement | null;
   ItemSeparatorComponent?: ComponentType | null;
   style?: StyleProp<ViewStyle>;
-  ListHeaderComponent?: ComponentType | (() => ReactNode) | null;
+  ListHeaderComponent?: ComponentType | (() => ReactNode) | ReactNode | null;
 };
 
 export default function NestedInScrollRows<T>({
@@ -23,12 +23,15 @@ export default function NestedInScrollRows<T>({
   ListHeaderComponent,
 }: NestedInScrollRowsProps<T>) {
   const Sep = ItemSeparatorComponent;
-  const header =
-    ListHeaderComponent == null
-      ? null
-      : typeof ListHeaderComponent === 'function'
-        ? <ListHeaderComponent />
-        : <ListHeaderComponent />;
+  let header: ReactNode = null;
+  if (ListHeaderComponent != null) {
+    if (typeof ListHeaderComponent === 'function') {
+      const Header = ListHeaderComponent as ComponentType;
+      header = <Header />;
+    } else {
+      header = ListHeaderComponent;
+    }
+  }
 
   return (
     <View style={style}>

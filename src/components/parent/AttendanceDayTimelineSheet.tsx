@@ -15,7 +15,7 @@ import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 import type { AttendanceDaySummary } from '@/src/utils/attendanceDaySummary';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
 const BORDER = '#E2E8F0';

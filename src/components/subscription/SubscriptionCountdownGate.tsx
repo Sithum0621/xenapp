@@ -1,9 +1,14 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text } from '@/src/theme/Text';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { routeForPaymentPlan, subscriptionCountdownVisibleForRole } from '@/src/services/subscription';
+import {
+  isPaidLike,
+  routeForPaymentPlan,
+  subscriptionCountdownVisibleForRole,
+} from '@/src/services/subscription';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -11,6 +16,8 @@ type Props = {
   role: string;
   expiryDateIso: string | null;
   isActive: boolean;
+  /** From validate_subscription_access — countdown only for paid/trial. */
+  reason?: string | null;
 };
 
 function formatDuration(ms: number) {
@@ -22,7 +29,16 @@ function formatDuration(ms: number) {
   return `${days}d ${hours}h ${minutes}m ${seconds}s`;
 }
 
-export default function SubscriptionCountdownGate({ role, expiryDateIso, isActive }: Props) {
+/**
+ * Soft countdown / free chip for parent dashboards. Never hard-blocks the app.
+ */
+export default function SubscriptionCountdownGate({
+  role,
+  expiryDateIso,
+  isActive,
+  reason,
+}: Props) {
+  const { t } = useTranslation();
   const [nowMs, setNowMs] = useState(Date.now());
   const expiryMs = useMemo(
     () => (expiryDateIso ? new Date(expiryDateIso).getTime() : 0),
@@ -38,35 +54,46 @@ export default function SubscriptionCountdownGate({ role, expiryDateIso, isActiv
     return null;
   }
 
+  const paidLike = isPaidLike(reason) || (isActive && Boolean(expiryDateIso) && expiryDateIso !== 'infinity');
+
+  if (!paidLike) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push(routeForPaymentPlan(role))}
+        style={({ pressed }) => [styles.freeChip, pressed && styles.pressed]}>
+        <Text style={styles.freeChipTitle}>{t('package.onFreeBannerTitle')}</Text>
+        <Text style={styles.freeChipSub}>{t('package.onFreeBannerBody')}</Text>
+      </Pressable>
+    );
+  }
+
   const remainingMs = Math.max(0, expiryMs - nowMs);
-  const isExpired = !isActive || remainingMs <= 0;
+  const isExpired = remainingMs <= 0;
   const isWarning = !isExpired && remainingMs < ONE_DAY_MS;
 
   if (isExpired) {
     return (
-      <View style={styles.overlay}>
-        <View style={styles.overlayCard}>
-          <Text style={styles.overlayTitle}>Package Expired</Text>
-          <Text style={styles.overlayText}>
-            Your subscription has expired. Please renew your package to continue.
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace(routeForPaymentPlan(role))}
-            style={({ pressed }) => [styles.renewBtn, pressed && styles.renewBtnPressed]}>
-            <Text style={styles.renewBtnText}>Renew Package</Text>
-          </Pressable>
-        </View>
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push(routeForPaymentPlan(role))}
+        style={({ pressed }) => [styles.freeChip, styles.expiredChip, pressed && styles.pressed]}>
+        <Text style={styles.freeChipTitle}>{t('package.expiredSoftTitle')}</Text>
+        <Text style={styles.freeChipSub}>{t('package.expiredSoftBody')}</Text>
+      </Pressable>
     );
   }
 
   return (
     <View style={[styles.countdownCard, isWarning && styles.warningCard]}>
       <Text style={[styles.countdownLabel, isWarning && styles.warningText]}>
-        Time Remaining: {formatDuration(remainingMs)}
+        {t('package.timeRemaining', { time: formatDuration(remainingMs) })}
       </Text>
-      {isWarning ? <Text style={styles.warningText}>Renew Package within 24 hours.</Text> : null}
+      {isWarning ? (
+        <Pressable accessibilityRole="button" onPress={() => router.push(routeForPaymentPlan(role))}>
+          <Text style={styles.warningText}>{t('package.renewWithin24h')}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -77,7 +104,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#BFDBFE',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     padding: 12,
     gap: 4,
   },
@@ -95,51 +122,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '700',
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(2,6,23,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    zIndex: 100,
-    pointerEvents: 'auto',
-  },
-  overlayCard: {
-    width: '100%',
-    maxWidth: 420,
-    borderRadius: 18,
-    padding: 20,
-    backgroundColor: '#FFFFFF',
+  freeChip: {
+    marginTop: 16,
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#FCA5A5',
-    gap: 10,
+    borderColor: '#BFDBFE',
+    backgroundColor: '#F7FAFF',
+    padding: 12,
+    gap: 4,
   },
-  overlayTitle: {
-    color: '#991B1B',
-    fontSize: 24,
+  expiredChip: {
+    borderColor: '#93C5FD',
+    backgroundColor: '#EEF4FF',
+  },
+  freeChipTitle: {
+    color: '#041830',
     fontWeight: '800',
     textAlign: 'center',
+    fontSize: 14,
   },
-  overlayText: {
-    color: '#334155',
+  freeChipSub: {
+    color: '#64748B',
     textAlign: 'center',
-    lineHeight: 21,
     fontWeight: '600',
+    fontSize: 13,
+    lineHeight: 18,
   },
-  renewBtn: {
-    marginTop: 8,
-    backgroundColor: '#123B7A',
-    borderRadius: 12,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  renewBtnPressed: {
-    opacity: 0.85,
-  },
-  renewBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 16,
-  },
+  pressed: { opacity: 0.88 },
 });

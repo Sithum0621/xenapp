@@ -1,14 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text } from '@/src/theme/Text';
-import { Dimensions, Modal, Platform, Pressable, StyleSheet, View, type LayoutRectangle } from 'react-native';
+import {
+  Dimensions,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  type LayoutRectangle,
+} from 'react-native';
 
+import { useAppThemeColors } from '@/src/context/ThemePreferenceContext';
 import { setStoredLanguagePreference, type StoredLangCode } from '@/src/services/languagePreference';
-
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
-const SUBTLE_BORDER = '#E2E8F0';
+import { Text } from '@/src/theme/Text';
 
 const DROPDOWN_WIDTH = 184;
 const ROW_MIN_HEIGHT = 48;
@@ -46,6 +51,7 @@ function verticalPosition(anchor: LayoutRectangle): number {
 /** Language picker: tap icon opens a small dropdown (English / Sinhala / Tamil). */
 export function LanguageLnToggle() {
   const { t, i18n } = useTranslation();
+  const colors = useAppThemeColors();
   const anchorRef = useRef<View>(null);
   const [open, setOpen] = useState(false);
   const [anchorLayout, setAnchorLayout] = useState<LayoutRectangle | null>(null);
@@ -77,8 +83,7 @@ export function LanguageLnToggle() {
     });
   }, [close, open]);
 
-  const dropdownTop =
-    anchorLayout !== null ? verticalPosition(anchorLayout) : 0;
+  const dropdownTop = anchorLayout !== null ? verticalPosition(anchorLayout) : 0;
   const dropdownLeft =
     anchorLayout !== null ? clampDropdownLeft(anchorLayout.x + anchorLayout.width) : 0;
 
@@ -90,14 +95,25 @@ export function LanguageLnToggle() {
           accessibilityLabel={t('auth.languageToggle')}
           accessibilityState={{ expanded: open }}
           onPress={toggleDropdown}
-          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}>
-          <Ionicons name="language-outline" size={22} color={BRAND_BLUE_DARK} />
+          style={({ pressed }) => [
+            styles.btn,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+            },
+            pressed && { opacity: 0.85, borderColor: colors.brandOrange },
+          ]}>
+          <Ionicons name="language-outline" size={22} color={colors.brandBlueDark} />
         </Pressable>
       </View>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
         <View style={styles.modalRoot}>
-          <Pressable style={styles.backdrop} onPress={close} accessibilityLabel={t('auth.languageMenuDismiss')} />
+          <Pressable
+            style={styles.backdrop}
+            onPress={close}
+            accessibilityLabel={t('auth.languageMenuDismiss')}
+          />
           {anchorLayout !== null ? (
             <View
               style={[
@@ -106,6 +122,8 @@ export function LanguageLnToggle() {
                   top: dropdownTop,
                   left: dropdownLeft,
                   width: DROPDOWN_WIDTH,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
                 },
               ]}>
               {OPTIONS.map(({ code, label }) => {
@@ -119,12 +137,18 @@ export function LanguageLnToggle() {
                     onPress={() => selectLang(code)}
                     style={({ pressed }) => [
                       styles.row,
-                      selected && styles.rowSelected,
+                      selected && { backgroundColor: colors.selectionWash },
                       pressed && styles.rowPressed,
                     ]}>
-                    <Text style={[styles.rowLabel, selected && styles.rowLabelSelected]}>{label}</Text>
+                    <Text
+                      style={[
+                        styles.rowLabel,
+                        { color: selected ? colors.brandBlueDark : colors.text },
+                      ]}>
+                      {label}
+                    </Text>
                     {selected ? (
-                      <Ionicons name="checkmark" size={20} color={BRAND_BLUE} />
+                      <Ionicons name="checkmark" size={20} color={colors.brandOrange} />
                     ) : (
                       <View style={styles.rowSpacer} />
                     )}
@@ -144,18 +168,12 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   btn: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: SUBTLE_BORDER,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  btnPressed: {
-    opacity: 0.85,
-    borderColor: BRAND_BLUE,
   },
   modalRoot: {
     flex: 1,
@@ -167,16 +185,14 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: 'absolute',
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: SUBTLE_BORDER,
     paddingVertical: 6,
     pointerEvents: 'auto',
     ...(Platform.OS === 'web'
-      ? { boxShadow: '0 8px 24px rgba(18, 59, 122, 0.12)' }
+      ? { boxShadow: '0 8px 24px rgba(4, 24, 48, 0.12)' }
       : {
-          shadowColor: '#123B7A',
+          shadowColor: '#041830',
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.12,
           shadowRadius: 16,
@@ -191,20 +207,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     minHeight: ROW_MIN_HEIGHT,
   },
-  rowSelected: {
-    backgroundColor: '#EFF6FF',
-  },
   rowPressed: {
     opacity: 0.92,
   },
   rowLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: BRAND_BLUE_DARK,
     flex: 1,
-  },
-  rowLabelSelected: {
-    color: BRAND_BLUE,
   },
   rowSpacer: {
     width: 20,

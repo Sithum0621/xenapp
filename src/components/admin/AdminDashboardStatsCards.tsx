@@ -5,8 +5,8 @@ import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-
 import { Text } from '@/src/theme/Text';
 import type { AdminDashboardStats } from '@/src/services/instituteAdminDashboardApi';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const SUBTLE_BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
@@ -62,7 +62,7 @@ export default function AdminDashboardStatsCards({ stats, loading, error }: Prop
       value: String(stats?.todaysClasses ?? 0),
       icon: 'calendar-outline',
       accent: BRAND_BLUE,
-      bg: '#EFF6FF',
+      bg: '#E3F2FD',
     },
     {
       key: 'tasks',

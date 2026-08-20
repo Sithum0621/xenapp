@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import {
   Platform,
   TextInput as RNTextInput,
@@ -11,7 +12,10 @@ import { FontFamily } from '@/src/theme/fonts';
  * App-wide `TextInput` using Lato Regular. Use instead of RN `TextInput` for
  * consistent typography with labels and buttons.
  */
-export function TextInput({ style, ...rest }: TextInputProps) {
+export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextInput(
+  { style, ...rest },
+  ref,
+) {
   const flat = (Array.isArray(style) ? Object.assign({}, ...style) : style) as
     | TextStyle
     | undefined;
@@ -19,6 +23,7 @@ export function TextInput({ style, ...rest }: TextInputProps) {
 
   return (
     <RNTextInput
+      ref={ref}
       {...rest}
       {...(Platform.OS === 'android' ? { includeFontPadding: false } : {})}
       style={[
@@ -28,4 +33,4 @@ export function TextInput({ style, ...rest }: TextInputProps) {
       ]}
     />
   );
-}
+});

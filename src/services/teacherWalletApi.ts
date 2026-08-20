@@ -185,6 +185,37 @@ export async function teacherWalletBankTransfer(
   }
 }
 
+export async function teacherWalletSpendSmsCredits(
+  credits: number,
+): Promise<TeacherWalletMutationResult> {
+  if (!Number.isFinite(credits) || credits <= 0) {
+    return { ok: false, error: 'Invalid credit amount.' };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('teacher_wallet_spend_sms_credits', {
+      p_credits: Math.round(credits),
+    });
+    if (error) {
+      if (error.message.includes('insufficient_balance')) {
+        return { ok: false, error: 'insufficient_balance' };
+      }
+      return { ok: false, error: error.message };
+    }
+    if (!data || typeof data !== 'object') {
+      return { ok: false, error: 'Invalid purchase response.' };
+    }
+    const r = data as Record<string, unknown>;
+    return {
+      ok: true,
+      balanceCents: asNumber(r.balance_cents),
+      amountCents: asNumber(r.amount_cents),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Parse rupee input (e.g. "2500" or "2500.50") to cents. */
 export function parseRupeeInputToCents(input: string): number | null {
   const trimmed = input.trim().replace(/,/g, '');

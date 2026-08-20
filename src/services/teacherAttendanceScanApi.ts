@@ -76,17 +76,33 @@ export async function listScanAttendanceOptions(
   return { options, error: null };
 }
 
-/** Resolve a scanned UUID or XEN student ID (e.g. XEN-2025-0003) to profiles.id. */
-export async function resolveStudentUserIdForAttendance(raw: string): Promise<string | null> {
+export type ResolveAttendanceStudentError =
+  | 'invalid_student_id'
+  | 'student_not_found'
+  | 'card_unclaimed';
+
+function mapResolveError(message: string): ResolveAttendanceStudentError {
+  const lower = message.toLowerCase();
+  if (lower.includes('card_unclaimed')) return 'card_unclaimed';
+  if (lower.includes('student_not_found')) return 'student_not_found';
+  return 'invalid_student_id';
+}
+
+/** Resolve a class-card token, mobile number, QR UUID, or legacy XEN ID to profiles.id. */
+export async function resolveStudentUserIdForAttendance(
+  raw: string,
+): Promise<{ studentUserId: string | null; errorCode: ResolveAttendanceStudentError | null }> {
   const cleaned = sanitizeScanInput(raw);
-  if (!cleaned) return null;
+  if (!cleaned) return { studentUserId: null, errorCode: 'invalid_student_id' };
 
   const { data, error } = await supabase.rpc('resolve_student_user_id_for_attendance', {
     p_identifier: cleaned,
   });
 
-  if (error || !data) return null;
-  return String(data);
+  if (error || !data) {
+    return { studentUserId: null, errorCode: mapResolveError(error?.message ?? '') };
+  }
+  return { studentUserId: String(data), errorCode: null };
 }
 
 export async function markAttendanceByScan(

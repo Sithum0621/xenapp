@@ -9,7 +9,7 @@ import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 import { formatChatListTime, truncateChatPreview } from '@/src/utils/groupChatFormat';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const BORDER = '#E2E8F0';
 const COMMUNITY_ACCENT = '#5B21B6';
@@ -33,7 +33,7 @@ function CommunityChatListRow({ preview, onPress, noMessagesLabel }: Props) {
       style={styles.row}
       innerStyle={styles.rowInner}>
       <View style={styles.avatarWrap}>
-        <GroupChatAvatar groupName={XEN_COMMUNITY_TITLE} size={52} />
+        <GroupChatAvatar groupName={XEN_COMMUNITY_TITLE} size={52} useBrandMark />
       </View>
       <View style={styles.body}>
         <View style={styles.titleRow}>
@@ -51,7 +51,7 @@ function CommunityChatListRow({ preview, onPress, noMessagesLabel }: Props) {
         </Text>
       </View>
       <View style={styles.badge}>
-        <Text style={styles.badgeText}>XEN</Text>
+        <Text style={styles.badgeText}>MyTuition</Text>
       </View>
     </ScrollFriendlyPressable>
   );

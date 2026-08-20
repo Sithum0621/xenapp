@@ -22,12 +22,35 @@ export function subscriptionCountdownVisibleForRole(role: string | undefined | n
   return role === 'parent_student';
 }
 
+export type SubscriptionPlanReason = 'ok' | 'free' | 'trial' | 'paid' | 'expired' | 'not_found' | 'device_mismatch';
+
 export type SubscriptionAccessResult = {
   can_access: boolean;
-  reason: 'ok' | 'expired' | 'not_found' | 'device_mismatch';
+  reason: SubscriptionPlanReason;
   expiry_date: string | null;
   is_active: boolean;
 };
+
+export type SubscriptionPlanTier = 'free' | 'trial' | 'paid' | 'unlimited';
+
+export function isFreeTier(reason: string | undefined | null): boolean {
+  return reason === 'free' || reason === 'not_found' || reason === 'expired';
+}
+
+/** Paid or trial with a real countdown (not free / not staff ok). */
+export function isPaidLike(reason: string | undefined | null): boolean {
+  return reason === 'paid' || reason === 'trial';
+}
+
+export function planTierFromReason(
+  reason: string | undefined | null,
+  bypass: boolean,
+): SubscriptionPlanTier {
+  if (bypass || reason === 'ok') return 'unlimited';
+  if (reason === 'paid') return 'paid';
+  if (reason === 'trial') return 'trial';
+  return 'free';
+}
 
 export async function validateSubscriptionAccessForCurrentUser(userId: string) {
   const { data, error } = await supabase.rpc('validate_subscription_access', {
@@ -43,15 +66,23 @@ export async function validateSubscriptionAccessForCurrentUser(userId: string) {
     row = raw as Partial<SubscriptionAccessResult>;
   }
 
+  const reason = (row?.reason as SubscriptionPlanReason | undefined) ?? 'free';
+
   return {
     data: row
       ? {
-          can_access: row.can_access === true,
-          reason: (row.reason as SubscriptionAccessResult['reason'] | undefined) ?? 'not_found',
+          // Parents always retain access (free fallback); never treat as blocked.
+          can_access: row.can_access === true || isFreeTier(reason) || isPaidLike(reason),
+          reason,
           expiry_date: typeof row.expiry_date === 'string' ? row.expiry_date : null,
-          is_active: row.is_active === true,
+          is_active: row.is_active === true || isFreeTier(reason) || isPaidLike(reason),
         }
-      : null,
+      : ({
+          can_access: true,
+          reason: 'free',
+          expiry_date: null,
+          is_active: true,
+        } satisfies SubscriptionAccessResult),
     error,
   };
 }

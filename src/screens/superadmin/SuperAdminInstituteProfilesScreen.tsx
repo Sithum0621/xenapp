@@ -14,8 +14,8 @@ import { AppRoutes, PROFILE_ROLE_SUPERADMIN, appHref, hrefSuperAdminInstituteMan
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 import { supabase } from '@/src/services/supabaseClient';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
@@ -228,9 +228,6 @@ export default function SuperAdminInstituteProfilesScreen() {
                 <Text style={styles.profileEmail} numberOfLines={1}>
                   {item.email}
                 </Text>
-                {item.xen_student_id ? (
-                  <Text style={styles.profileMeta}>{item.xen_student_id}</Text>
-                ) : null}
               </View>
             </View>
           )}
@@ -333,7 +330,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },

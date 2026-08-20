@@ -27,8 +27,8 @@ import {
   type GamesScheduleSubject,
 } from '@/src/services/superadminGamesScheduleApi';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const SUBTLE_BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   addEventTriggerBtnPressed: {
     opacity: 0.88,
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   addSubjectBtnActive: {
     backgroundColor: BRAND_BLUE,

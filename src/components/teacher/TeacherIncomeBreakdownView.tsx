@@ -7,8 +7,9 @@ import { AppScrollView } from '@/src/components/layout/AppScrollView';
 import type { TeacherDashboardClassRow } from '@/src/services/teacherDashboardApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const GREEN_OK = '#15803D';
@@ -111,7 +112,7 @@ export default memo(TeacherIncomeBreakdownView);
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: PAGE_EDGE_INSET,
     paddingBottom: 28,
     gap: 10,
   },

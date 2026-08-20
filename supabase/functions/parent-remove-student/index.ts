@@ -5,42 +5,10 @@
  * Deploy: supabase functions deploy parent-remove-student --no-verify-jwt
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
-
-const DEFAULT_ALLOWED_ORIGINS = new Set([
-  'http://localhost:8081',
-  'http://127.0.0.1:8081',
-  'http://localhost:19006',
-  'http://127.0.0.1:19006',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-]);
-
-function allowedOrigins(): Set<string> {
-  const extra =
-    Deno.env.get('TEACHER_ENROLL_ALLOWED_ORIGINS')?.split(',').map((s) => s.trim()).filter(Boolean) ??
-    [];
-  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...extra]);
-}
-
-function corsHeadersFor(req: Request): Headers {
-  const origin = req.headers.get('Origin');
-  const allow = allowedOrigins();
-  const allowOrigin = origin && allow.has(origin) ? origin : '*';
-  const h = new Headers();
-  h.set('Access-Control-Allow-Origin', allowOrigin);
-  h.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
-  h.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  h.set('Access-Control-Max-Age', '86400');
-  if (allowOrigin !== '*') {
-    h.set('Vary', 'Origin');
-  }
-  return h;
-}
+import { corsHeadersFor, jsonResponse } from '../_shared/cors.ts';
 
 function json(body: Record<string, unknown>, req: Request, status = 200) {
-  const headers = corsHeadersFor(req);
-  headers.set('Content-Type', 'application/json');
-  return new Response(JSON.stringify(body), { status, headers });
+  return jsonResponse(req, body, status);
 }
 
 Deno.serve(async (req) => {

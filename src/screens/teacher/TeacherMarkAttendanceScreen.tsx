@@ -7,19 +7,21 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import BrandHeader from '@/src/components/parent/BrandHeader';
 import TeacherStudentQrScanner from '@/src/components/teacher/groupDetail/TeacherStudentQrScanner';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import {
   listScanAttendanceOptions,
   markAttendanceByScan,
+  resolveStudentUserIdForAttendance,
   type ScanAttendanceOption,
 } from '@/src/services/teacherAttendanceScanApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
@@ -77,7 +79,11 @@ export default function TeacherMarkAttendanceScreen() {
                 ? 'errorNotAuthorized'
                 : code === 'student_not_in_your_classes'
                   ? 'errorNotEnrolled'
-                  : 'errorGeneric';
+                  : code === 'card_unclaimed'
+                    ? 'errorCardUnclaimed'
+                    : code === 'invalid_student_id'
+                      ? 'errorInvalidStudentId'
+                      : 'errorGeneric';
       appAlert(am('errorTitle'), detail?.trim() || am(key), [
         { text: am('scanAgain'), onPress: () => setScanSession((n) => n + 1) },
       ]);
@@ -181,14 +187,38 @@ export default function TeacherMarkAttendanceScreen() {
           showError(errorCode, error);
           return;
         }
-        finishSuccess(result.student_name, result.group_name, result.class_label, result.already_present);
+        finishSuccess(
+          result.student_name,
+          result.group_name,
+          result.class_label,
+          result.marked_at,
+          result.already_present,
+        );
       })();
     },
     [finishSuccess, pickClassAndMark, showError],
   );
 
+  const handleParsedScan = useCallback(
+    (raw: string) => {
+      void (async () => {
+        setSubmitting(true);
+        const { studentUserId, errorCode } = await resolveStudentUserIdForAttendance(raw);
+        if (!studentUserId) {
+          setSubmitting(false);
+          showError(errorCode);
+          return;
+        }
+        setSubmitting(false);
+        handleParsedId(studentUserId);
+      })();
+    },
+    [handleParsedId, showError],
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <BrandHeader />
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -217,6 +247,7 @@ export default function TeacherMarkAttendanceScreen() {
               key={scanSession}
               onClose={() => routerBackOrReplace(router, appHref(AppRoutes.teacherDashboard))}
               onParsedId={handleParsedId}
+              onParsedIssuedCard={handleParsedScan}
             />
           )}
         </View>

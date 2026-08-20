@@ -12,7 +12,7 @@ export type RegisterHouseholdChildPayload = {
 };
 
 export type RegisterHouseholdChildResult =
-  | { ok: true; studentUserId: string; xenStudentId: string }
+  | { ok: true; studentUserId: string }
   | { ok: false; error: string; detail?: string };
 
 async function invokeRegisterChild(
@@ -61,12 +61,10 @@ export async function registerParentHouseholdChild(
   if (ok) {
     const studentUserId =
       typeof json.student_user_id === 'string' ? json.student_user_id.trim() : '';
-    const xenStudentId =
-      typeof json.xen_student_id === 'string' ? json.xen_student_id.trim() : '';
-    if (!studentUserId || !xenStudentId) {
+    if (!studentUserId) {
       return { ok: false, error: 'invalid_response' };
     }
-    return { ok: true, studentUserId, xenStudentId };
+    return { ok: true, studentUserId };
   }
 
   return {

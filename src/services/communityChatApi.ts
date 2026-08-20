@@ -1,7 +1,10 @@
 import type { GroupChatMessage } from '@/src/services/groupChatApi';
 import { supabase } from '@/src/services/supabaseClient';
 
-export const XEN_COMMUNITY_TITLE = 'XEN Community';
+import { APP_COMMUNITY_TITLE, normalizeCommunityTitle } from '@/src/constants/brand';
+
+/** @deprecated Prefer APP_COMMUNITY_TITLE — kept for existing imports. */
+export const XEN_COMMUNITY_TITLE = APP_COMMUNITY_TITLE;
 
 export type CommunityChatPreview = {
   title: string;
@@ -40,7 +43,7 @@ export async function fetchCommunityChatSummary(): Promise<CommunityChatPreview>
 
     const r = row as Record<string, unknown>;
     return {
-      title: String(r.title ?? XEN_COMMUNITY_TITLE),
+      title: normalizeCommunityTitle(typeof r.title === 'string' ? r.title : null),
       lastMessageBody: typeof r.last_message_body === 'string' ? r.last_message_body : null,
       lastMessageAt: typeof r.last_message_at === 'string' ? r.last_message_at : null,
       lastSenderName: typeof r.last_sender_name === 'string' ? r.last_sender_name : null,

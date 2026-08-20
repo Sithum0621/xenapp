@@ -8,11 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AdminSidebar from '@/src/components/admin/AdminSidebar';
 import { KeyboardAwareScreen } from '@/src/components/layout/KeyboardAwareScreen';
+import BrandHeader from '@/src/components/parent/BrandHeader';
 import DashboardSubscriptionWrapper from '@/src/components/subscription/DashboardSubscriptionWrapper';
 import SuperadminDevDashboardSwitcher from '@/src/components/SuperadminDevDashboardSwitcher';
 import { ADMIN_COMPACT_BREAKPOINT } from '@/src/constants/adminLayout';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const OVERLAY = 'rgba(15, 23, 42, 0.45)';
 
@@ -49,6 +50,7 @@ export default function AdminDashboardShell({ children }: { children: React.Reac
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <SuperadminDevDashboardSwitcher />
+      <BrandHeader />
       <DashboardSubscriptionWrapper role="admin">
         <View style={styles.row}>
           {!isCompact ? (
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
   modalDrawer: {
     width: '82%',
     maxWidth: 300,
-    backgroundColor: '#0E2F63',
+    backgroundColor: '#00101F',
     alignSelf: 'stretch',
     ...(Platform.OS === 'web'
       ? ({ boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.15)' } as const)
@@ -143,7 +145,7 @@ const styles = StyleSheet.create({
   mobileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E2E8F0',

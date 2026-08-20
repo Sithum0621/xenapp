@@ -3,10 +3,11 @@ import { appAlert } from '@/src/utils/appAlert';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import BrandHeader from '@/src/components/parent/BrandHeader';
 import TeacherPaymentSlipModal from '@/src/components/teacher/TeacherPaymentSlipModal';
 import TeacherStudentQrScanner from '@/src/components/teacher/groupDetail/TeacherStudentQrScanner';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
@@ -24,12 +25,12 @@ import {
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 import { formatLkrFromCents } from '@/src/utils/classesPlaceholderBilling';
-import { formatXenStudentIdInput, parseXenStudentId, XEN_STUDENT_ID_PREFIX } from '@/src/utils/loginIdentifier';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
-import { parseXenIdFromScan, sanitizeScanInput } from '@/src/utils/xenQrPayload';
+import { parseSriLankaMobile, sanitizeSriLankaMobileInput } from '@/src/utils/sriLankaMobile';
+import { attendanceScanIdentifier, sanitizeScanInput } from '@/src/utils/xenQrPayload';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
@@ -48,20 +49,20 @@ export default function TeacherCollectPaymentScreen() {
   const groupSource = params.groupSource === 'personal' ? 'personal' : 'institute';
   const groupName = String(params.groupName ?? '').trim() || p('classFallback');
 
-  const scanInputRef = useRef<{ focus: () => void } | null>(null);
+  const scanInputRef = useRef<RNTextInput>(null);
   const [scanSession, setScanSession] = useState(0);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [qrScanInput, setQrScanInput] = useState('');
-  const [xenInput, setXenInput] = useState(XEN_STUDENT_ID_PREFIX);
+  const [mobileInput, setMobileInput] = useState('');
   const [preview, setPreview] = useState<ClassFeePreview | null>(null);
   const [slipOpen, setSlipOpen] = useState(false);
 
-  const xenIdValid = useMemo(() => parseXenStudentId(xenInput) !== null, [xenInput]);
+  const mobileValid = useMemo(() => parseSriLankaMobile(mobileInput) !== null, [mobileInput]);
 
   const resetInputs = useCallback(() => {
     setQrScanInput('');
-    setXenInput(XEN_STUDENT_ID_PREFIX);
+    setMobileInput('');
     setScanSession((n) => n + 1);
     setPreview(null);
     setSlipOpen(false);
@@ -78,8 +79,10 @@ export default function TeacherCollectPaymentScreen() {
               ? 'errorAlreadyCollected'
               : code === 'insufficient_student_balance'
                 ? 'errorInsufficientWallet'
-                : code === 'not_authorized'
-                  ? 'errorNotAuthorized'
+              : code === 'not_authorized'
+                ? 'errorNotAuthorized'
+                : code === 'card_unclaimed'
+                  ? 'errorCardUnclaimed'
                   : 'errorGeneric';
       appAlert(p('errorTitle'), detail?.trim() || p(key), [
         { text: p('scanAgain'), onPress: resetInputs },
@@ -117,10 +120,10 @@ export default function TeacherCollectPaymentScreen() {
   const resolveAndPreview = useCallback(
     async (raw: string) => {
       setLoadingPreview(true);
-      const studentUserId = await resolveStudentUserIdForAttendance(raw);
+      const { studentUserId, errorCode } = await resolveStudentUserIdForAttendance(raw);
       if (!studentUserId) {
         setLoadingPreview(false);
-        showError('student_not_found');
+        showError(errorCode);
         return;
       }
       setLoadingPreview(false);
@@ -169,23 +172,25 @@ export default function TeacherCollectPaymentScreen() {
   const handleQrScanChange = (text: string) => {
     const cleaned = sanitizeScanInput(text);
     setQrScanInput(cleaned);
-    if (!loadingPreview && parseXenIdFromScan(cleaned)) {
-      void resolveAndPreview(cleaned);
+    const identifier = attendanceScanIdentifier(cleaned);
+    if (!loadingPreview && identifier) {
+      void resolveAndPreview(identifier);
     }
   };
 
-  const handleXenSubmit = () => {
-    const xenId = parseXenStudentId(xenInput);
-    if (!xenId) {
+  const handleMobileSubmit = () => {
+    const phone = parseSriLankaMobile(mobileInput);
+    if (!phone) {
       showError('student_not_found');
       return;
     }
-    void resolveAndPreview(xenId);
+    void resolveAndPreview(phone);
   };
 
   if (!groupId) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <BrandHeader />
         <View style={styles.missingWrap}>
           <Text style={styles.missingText}>{p('missingParams')}</Text>
           <Pressable
@@ -202,6 +207,7 @@ export default function TeacherCollectPaymentScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <BrandHeader />
       <TeacherPaymentSlipModal
         visible={slipOpen}
         preview={preview}
@@ -257,6 +263,7 @@ export default function TeacherCollectPaymentScreen() {
               compact
               key={scanSession}
               onParsedId={(id) => void resolveAndPreview(id)}
+              onParsedIssuedCard={(token) => void resolveAndPreview(token)}
             />
           )}
         </View>
@@ -270,25 +277,21 @@ export default function TeacherCollectPaymentScreen() {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>{p('xenTitle')}</Text>
           <TextInput
-            value={xenInput}
-            onChangeText={(text) => {
-              if (text.length < XEN_STUDENT_ID_PREFIX.length) {
-                setXenInput(XEN_STUDENT_ID_PREFIX);
-                return;
-              }
-              setXenInput(formatXenStudentIdInput(text));
-            }}
+            value={mobileInput}
+            onChangeText={(text) => setMobileInput(sanitizeSriLankaMobileInput(text))}
             placeholder={p('xenPlaceholder')}
             placeholderTextColor={TEXT_MUTED}
-            autoCapitalize="characters"
+            keyboardType="phone-pad"
+            autoCapitalize="none"
+            autoCorrect={false}
             editable={!busy}
             style={styles.xenInput}
-            onSubmitEditing={handleXenSubmit}
+            onSubmitEditing={handleMobileSubmit}
           />
           <Pressable
-            disabled={busy || !xenIdValid}
-            onPress={handleXenSubmit}
-            style={[styles.secondaryBtn, (busy || !xenIdValid) && styles.secondaryBtnDisabled]}>
+            disabled={busy || !mobileValid}
+            onPress={handleMobileSubmit}
+            style={[styles.secondaryBtn, (busy || !mobileValid) && styles.secondaryBtnDisabled]}>
             <Text style={styles.secondaryBtnText}>{p('xenSubmit')}</Text>
           </Pressable>
         </View>
@@ -304,7 +307,7 @@ const styles = StyleSheet.create({
   backRowPressed: { opacity: 0.75 },
   backLabel: { fontSize: 16, fontWeight: '700', color: BRAND_BLUE_DARK },
   heroCard: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     borderWidth: 1,
     borderColor: '#BFDBFE',
     borderRadius: 16,

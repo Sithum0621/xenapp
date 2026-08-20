@@ -18,9 +18,9 @@ function NativeFluidFlatListInner<ItemT>(
   const { style, contentContainerStyle, ...rest } = props;
   return (
     <FlatListComponent
-      ref={ref}
+      ref={ref as never}
       {...rest}
-      {...NATIVE_FLUID_LIST_PROPS}
+      {...(NATIVE_FLUID_LIST_PROPS as object)}
       automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       style={[WEB_SCROLL_SURFACE_STYLE, style]}
       contentContainerStyle={[

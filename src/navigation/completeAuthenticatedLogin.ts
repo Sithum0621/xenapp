@@ -3,7 +3,6 @@ import type { TFunction } from 'i18next';
 
 import { appHref, dashboardRouteForProfileRole, type ProfileRole } from '@/src/navigation/AppNavigator';
 import {
-  routeForPaymentPlan,
   subscriptionChecksBypassForRole,
   validateSubscriptionAccessForCurrentUser,
 } from '@/src/services/subscription';
@@ -72,13 +71,8 @@ export async function finalizeAuthenticatedLogin(
     return { ok: true };
   }
 
-  const { data: accessData } = await validateSubscriptionAccessForCurrentUser(uid);
-  if (accessData?.reason === 'expired') {
-    await notifyLoginSecurity(t);
-    router.replace(routeForPaymentPlan(profile.role));
-    setSubmitting(false);
-    return { ok: true };
-  }
+  // Ensure free/paid access row is resolved (never blocks parents — free fallback).
+  await validateSubscriptionAccessForCurrentUser(uid);
 
   await notifyLoginSecurity(t);
   setSubmitting(false);

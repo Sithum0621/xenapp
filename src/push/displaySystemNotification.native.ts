@@ -28,5 +28,5 @@ export async function getInitialNotificationRoute(): Promise<string | null> {
   if (fromNotifee) return fromNotifee;
 
   const fcmInitial = await messaging().getInitialNotification();
-  return routeFromRemoteMessage(fcmInitial);
+  return routeFromRemoteMessage(fcmInitial as FcmRemoteMessage | null);
 }

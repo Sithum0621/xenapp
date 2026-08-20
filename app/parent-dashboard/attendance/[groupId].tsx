@@ -1,17 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AttendanceCalendarGrid from '@/src/components/parent/AttendanceCalendarGrid';
+import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
 import {
   ATTENDANCE_WINDOW_DAYS,
@@ -20,16 +19,15 @@ import {
 } from '@/src/services/studentAttendanceApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
+import { PAGE_CONTENT_BOTTOM, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
-const SURFACE_ALT = '#F4F6FA';
 const BORDER = '#E2E8F0';
 
 export default function ParentAttendanceGroupCalendarScreen() {
-  const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{
     studentId?: string | string[];
@@ -93,18 +91,11 @@ export default function ParentAttendanceGroupCalendarScreen() {
   }, [load]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('appLock.back')}
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}>
-          <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
-          <Text style={styles.backLabel}>{t('appLock.back')}</Text>
-        </Pressable>
-      </View>
-
+    <DashboardScreenShell
+      showBack
+      title={groupName ?? t('parentDashboard.attendanceCalendarTitle')}
+      subtitle={instituteName || undefined}
+      padContent={false}>
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -112,15 +103,6 @@ export default function ParentAttendanceGroupCalendarScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />
         }>
-        <Text style={styles.screenTitle}>
-          {groupName ?? t('parentDashboard.attendanceCalendarTitle')}
-        </Text>
-        {instituteName ? (
-          <Text style={styles.institute} numberOfLines={2}>
-            {instituteName}
-          </Text>
-        ) : null}
-
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={BRAND_BLUE} />
@@ -159,47 +141,16 @@ export default function ParentAttendanceGroupCalendarScreen() {
           </View>
         ) : null}
       </KeyboardAwareScrollView>
-    </SafeAreaView>
+    </DashboardScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SURFACE_ALT },
-  topBar: {
-    paddingHorizontal: 12,
-    paddingBottom: 4,
-    backgroundColor: SURFACE_ALT,
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    alignSelf: 'flex-start',
-  },
-  backBtnPressed: { opacity: 0.7 },
-  backLabel: {
-    fontSize: 16,
-    fontFamily: FontFamily.regular,
-    color: BRAND_BLUE_DARK,
-  },
   scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: 12,
+    paddingBottom: PAGE_CONTENT_BOTTOM,
     gap: 12,
-  },
-  screenTitle: {
-    fontSize: 24,
-    fontFamily: FontFamily.bold,
-    color: BRAND_BLUE_DARK,
-    letterSpacing: -0.3,
-  },
-  institute: {
-    fontSize: 14,
-    fontFamily: FontFamily.regular,
-    color: TEXT_MUTED,
-    marginBottom: 8,
   },
   calendarCard: {
     backgroundColor: SURFACE,

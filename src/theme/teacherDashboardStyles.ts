@@ -11,7 +11,7 @@ export const teacherDashboardCard = {
   overflow: 'hidden' as const,
   ...Platform.select({
     ios: {
-      shadowColor: '#123B7A',
+      shadowColor: '#041830',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
       shadowRadius: 8,
@@ -33,7 +33,7 @@ export const teacherDashboardScreen = StyleSheet.create({
   pageTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0E2F63',
+    color: '#00101F',
   },
   pageSub: {
     fontSize: 14,
@@ -67,7 +67,7 @@ export const teacherDashboardScreen = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0E2F63',
+    color: '#00101F',
     textAlign: 'center',
   },
   emptyBody: {

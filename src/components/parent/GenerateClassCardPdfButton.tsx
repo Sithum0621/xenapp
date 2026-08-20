@@ -4,7 +4,10 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Platform, Pressable, StyleSheet } from 'react-native';
 
-import type { StudentClassCardData } from '@/src/services/studentClassCardApi';
+import {
+  formatContactNumber,
+  type StudentClassCardData,
+} from '@/src/services/studentClassCardApi';
 import {
   generateStudentClassCardPdf,
   openClassCardPdf,
@@ -13,8 +16,8 @@ import {
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const SURFACE = '#FFFFFF';
 const BORDER = '#E2E8F0';
 
@@ -29,7 +32,7 @@ export default function GenerateClassCardPdfButton({ card }: GenerateClassCardPd
   const pdfLabels = useCallback(
     () => ({
       documentTitle: t('parentDashboard.myClassCardPdfTitle', {
-        studentId: card.xenStudentId,
+        studentId: formatContactNumber(card.mobileNumber),
       }),
       frontCaption: t('parentDashboard.myClassCardSideFront'),
       backCaption: t('parentDashboard.myClassCardSideBack'),
@@ -37,7 +40,7 @@ export default function GenerateClassCardPdfButton({ card }: GenerateClassCardPd
       idLabel: t('parentDashboard.myClassCardLabelStudentId'),
       contactLabel: t('parentDashboard.myClassCardLabelContact'),
     }),
-    [card.xenStudentId, t],
+    [card.mobileNumber, t],
   );
 
   const promptPdfActions = useCallback(

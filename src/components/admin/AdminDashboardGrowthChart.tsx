@@ -6,8 +6,8 @@ import Svg, { Circle, Polyline } from 'react-native-svg';
 import { Text } from '@/src/theme/Text';
 import type { AdminDashboardGrowth, AdminDashboardGrowthPeriod } from '@/src/services/instituteAdminDashboardApi';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const SUBTLE_BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const CHART_HEIGHT = 120;
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   periodBtnActive: {
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   periodBtnText: { fontSize: 13, fontWeight: '700', color: TEXT_MUTED },
   periodBtnTextActive: { color: BRAND_BLUE_DARK },
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   seriesChipActive: {
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   seriesChipText: { fontSize: 13, fontWeight: '700', color: TEXT_MUTED },
   seriesChipTextActive: { color: BRAND_BLUE_DARK },

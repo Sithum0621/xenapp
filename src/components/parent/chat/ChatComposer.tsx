@@ -4,11 +4,11 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-
 
 import { TextInput } from '@/src/theme/TextInput';
 import { FontFamily } from '@/src/theme/fonts';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE = '#041830';
 const BORDER = '#E2E8F0';
 const SURFACE = '#FFFFFF';
-const TEXT_MUTED = '#64748B';
 
 type Props = {
   placeholder: string;
@@ -52,7 +52,7 @@ function ChatComposer({ placeholder, sendLabel, attachLabel, onSend, onAttach }:
           multiline
           maxLength={2000}
           editable={!sending}
-          style={styles.input}
+          style={styles.input as object}
         />
       </View>
       <Pressable
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: PAGE_EDGE_INSET,
     paddingVertical: 10,
     backgroundColor: SURFACE,
     borderTopWidth: StyleSheet.hairlineWidth,

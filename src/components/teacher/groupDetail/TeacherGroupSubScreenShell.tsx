@@ -7,12 +7,14 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import BrandHeader from '@/src/components/parent/BrandHeader';
 
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 import { parseTeacherGroupParams } from '@/src/utils/teacherGroupRouteParams';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 
@@ -44,6 +46,7 @@ export default function TeacherGroupSubScreenShell({ sectionTitle, children }: P
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <BrandHeader />
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -80,7 +83,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F8FAFC' },
   scroll: { paddingBottom: 28 },
   header: {
-    paddingHorizontal: 18,
+    paddingHorizontal: PAGE_EDGE_INSET,
     paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -125,7 +128,7 @@ const styles = StyleSheet.create({
     color: TEXT_MUTED,
   },
   card: {
-    marginHorizontal: 18,
+    marginHorizontal: PAGE_EDGE_INSET,
     marginTop: 14,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,

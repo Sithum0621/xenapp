@@ -6,10 +6,10 @@ import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
-const GRADIENT_START = '#123B7A';
+const GRADIENT_START = '#041830';
 const GRADIENT_END = '#10B981';
 
 const RING_SIZE = 124;
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       android: { elevation: 3 },
       default: {
-        shadowColor: '#0E2F63',
+        shadowColor: '#00101F',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.08,
         shadowRadius: 18,

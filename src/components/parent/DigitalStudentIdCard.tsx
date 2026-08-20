@@ -156,11 +156,6 @@ function CardBackFace({
             />
             <DetailField
               label={t('parentDashboard.myClassCardLabelStudentId')}
-              value={card.xenStudentId}
-              metrics={metrics}
-            />
-            <DetailField
-              label={t('parentDashboard.myClassCardLabelContact')}
               value={displayContact}
               metrics={metrics}
             />
@@ -288,7 +283,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     ...Platform.select({
       ios: {
-        shadowColor: '#0E2F63',
+        shadowColor: '#00101F',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.22,
         shadowRadius: 20,
@@ -372,7 +367,7 @@ const styles = StyleSheet.create({
   sideBadge: {
     fontSize: 12,
     fontFamily: FontFamily.bold,
-    color: '#123B7A',
+    color: '#041830',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },

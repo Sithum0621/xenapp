@@ -12,8 +12,8 @@ import {
   type DraftMcqQuestion,
 } from '@/src/utils/gamesScheduleMcq';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const PANEL_BG = '#F8FAFC';
 const SUBTLE_BORDER = '#E2E8F0';
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   choiceBtnSelected: {
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   choiceLetter: {
     width: 22,

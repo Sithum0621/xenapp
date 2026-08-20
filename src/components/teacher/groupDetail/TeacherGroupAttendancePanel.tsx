@@ -15,8 +15,8 @@ import {
 } from '@/src/services/teacherGroupWorkspaceApi';
 import type { TeacherGroupRouteContext } from '@/src/utils/teacherGroupRouteParams';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 const TEXT_MUTED = '#64748B';
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     backgroundColor: '#FFFFFF',
   },
-  slotChipActive: { borderColor: BRAND_BLUE, backgroundColor: '#EFF6FF' },
+  slotChipActive: { borderColor: BRAND_BLUE, backgroundColor: '#E3F2FD' },
   slotChipText: { fontSize: 14, fontWeight: '800', color: BRAND_BLUE_DARK },
   slotChipTextActive: { color: BRAND_BLUE },
   slotMeta: { marginTop: 4, fontSize: 12, fontWeight: '600', color: TEXT_MUTED },

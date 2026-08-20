@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { appAlert } from '@/src/utils/appAlert';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet } from 'react-native';
 
 import { requestPremiumClassCard } from '@/src/services/parentPremiumCardApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const SURFACE = '#FFFFFF';
 
 type Props = {
@@ -97,11 +97,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderWidth: 1.5,
     borderColor: BRAND_BLUE,
-    shadowColor: BRAND_BLUE_DARK,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    ...Platform.select({
+      android: { elevation: 2 },
+      web: {
+        boxShadow: "0 2px 6px rgba(18, 59, 122, 0.06)",
+      },
+      default: {
+        shadowColor: BRAND_BLUE_DARK,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+    }),
   },
   buttonPressed: { opacity: 0.9 },
   buttonDisabled: { opacity: 0.65 },

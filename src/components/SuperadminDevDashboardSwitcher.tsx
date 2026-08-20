@@ -84,8 +84,8 @@ export default function SuperadminDevDashboardSwitcher() {
   );
 }
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 
 const styles = StyleSheet.create({
   wrap: {

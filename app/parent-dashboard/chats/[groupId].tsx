@@ -154,7 +154,7 @@ export default function ParentGroupChatRoomScreen() {
         }>
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#123B7A" />
+            <ActivityIndicator size="large" color="#041830" />
           </View>
         ) : error ? (
           <View style={styles.centered}>
@@ -168,6 +168,7 @@ export default function ParentGroupChatRoomScreen() {
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={listEmpty}
+            {...FLAT_LIST_PERF_SCROLLABLE}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             onContentSizeChange={() => {
@@ -175,7 +176,6 @@ export default function ParentGroupChatRoomScreen() {
                 listRef.current?.scrollToEnd({ animated: false });
               }
             }}
-            {...FLAT_LIST_PERF_SCROLLABLE}
           />
         )}
       </GroupChatRoomShell>

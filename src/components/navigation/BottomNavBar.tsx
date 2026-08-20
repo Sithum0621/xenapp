@@ -109,9 +109,7 @@ const styles = StyleSheet.create({
   },
   shellWeb: Platform.select({
     web: {
-      // @ts-expect-error -- web-only CSS values understood by react-native-web
       boxShadow: '0 -6px 18px rgba(14, 47, 99, 0.06)',
-      // @ts-expect-error
       position: 'fixed',
     },
     default: {},

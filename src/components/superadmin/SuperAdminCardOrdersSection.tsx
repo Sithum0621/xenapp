@@ -22,8 +22,8 @@ import {
   type PremiumCardOrderStatusFilter,
 } from '@/src/utils/premiumCardOrderStatus';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const SUBTLE_BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
@@ -49,7 +49,7 @@ type StatusStepperProps = {
   current: PremiumCardOrderStatus;
   busy: boolean;
   onSelectStatus: (status: PremiumCardOrderStatus) => void;
-  t: (key: string) => string;
+  t: (key: string, options?: Record<string, unknown>) => string;
 };
 
 function StatusStepper({ current, busy, onSelectStatus, t }: StatusStepperProps) {
@@ -115,7 +115,7 @@ type OrderRowProps = {
   busy: boolean;
   locale: string;
   onSelectStatus: (id: string, status: PremiumCardOrderStatus) => void;
-  t: (key: string) => string;
+  t: (key: string, options?: Record<string, unknown>) => string;
 };
 
 function OrderRow({ order, busy, locale, onSelectStatus, t }: OrderRowProps) {
@@ -137,9 +137,6 @@ function OrderRow({ order, busy, locale, onSelectStatus, t }: OrderRowProps) {
           </View>
         </View>
 
-        <Text style={styles.metaLine}>
-          {t('superAdmin.cardOrdersXenId', { id: order.student_xen_id || '—' })}
-        </Text>
         <Text style={styles.metaLine}>
           {t('superAdmin.cardOrdersMobile', {
             mobile: formatContactNumber(order.student_mobile),
@@ -558,7 +555,7 @@ const styles = StyleSheet.create({
   },
   stepDotCurrent: {
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     transform: [{ scale: 1.08 }],
   },
   stepDotFuture: {

@@ -1,4 +1,4 @@
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE = '#041830';
 const SUCCESS = '#059669';
 const DANGER = '#B42318';
 const TEXT_MUTED = '#64748B';
@@ -42,7 +42,7 @@ export function notificationVisual(
     color: BRAND_BLUE,
     rowBackground: 'rgba(18, 59, 122, 0.05)',
     iconBackground: 'rgba(18, 59, 122, 0.08)',
-    titleColor: '#0E2F63',
+    titleColor: '#00101F',
   };
 }
 

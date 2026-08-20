@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -13,6 +14,7 @@ import {
 
 import { KeyboardAwareModalFrame, KeyboardAwareScrollView } from '@/src/components/layout/scroll';
 
+import { WALLET_DEPOSIT_BANK } from '@/src/constants/walletBankDetails';
 import { initPayhereTeacherWalletTopUp } from '@/src/services/payhereTeacherWalletApi';
 import { supabase } from '@/src/services/supabaseClient';
 import {
@@ -24,12 +26,11 @@ import {
   teacherWalletPayhereRedirectUrl,
   teacherWalletPayhereReturnUrl,
 } from '@/src/utils/teacherWalletPayhereUrls';
-import { isPayhereEnabled } from '@/src/utils/payhereConfig';
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const AMBER_BG = '#FFFBEB';
@@ -41,6 +42,10 @@ export type TeacherWalletAddMoneyModalProps = {
   visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  /** Open on Bank transfer (money in) or PayHere. */
+  initialTab?: AddMoneyTab;
+  /** Prefill amount in rupees. */
+  initialAmount?: string;
 };
 
 function newRequestId(): string {
@@ -51,13 +56,16 @@ export default function TeacherWalletAddMoneyModal({
   visible,
   onClose,
   onSuccess,
+  initialTab = 'manual',
+  initialAmount = '',
 }: TeacherWalletAddMoneyModalProps) {
   const { t } = useTranslation();
   const w = (k: string, o?: Record<string, unknown>) => t(`teacherDashboard.wallet.${k}`, o);
-  const payhereReady = isPayhereEnabled();
+  /** PayHere stays coming soon until the live checkout is switched on. */
+  const payhereReady = false;
 
-  const [tab, setTab] = useState<AddMoneyTab>('manual');
-  const [amountInput, setAmountInput] = useState('');
+  const [tab, setTab] = useState<AddMoneyTab>(initialTab);
+  const [amountInput, setAmountInput] = useState(initialAmount);
   const [depositorNameInput, setDepositorNameInput] = useState('');
   const [depositorIdInput, setDepositorIdInput] = useState('');
   const [slipUri, setSlipUri] = useState<string | null>(null);
@@ -65,13 +73,20 @@ export default function TeacherWalletAddMoneyModal({
   const [error, setError] = useState<string | null>(null);
 
   const reset = useCallback(() => {
-    setTab('manual');
-    setAmountInput('');
+    setTab(initialTab);
+    setAmountInput(initialAmount);
     setDepositorNameInput('');
     setDepositorIdInput('');
     setSlipUri(null);
     setError(null);
-  }, []);
+  }, [initialTab, initialAmount]);
+
+  useEffect(() => {
+    if (!visible) return;
+    setTab(initialTab);
+    setAmountInput(initialAmount);
+    setError(null);
+  }, [visible, initialTab, initialAmount]);
 
   const handleClose = useCallback(() => {
     if (submitting) return;
@@ -284,6 +299,18 @@ export default function TeacherWalletAddMoneyModal({
 
             {tab === 'manual' ? (
               <>
+                <View style={styles.bankBox}>
+                  <Text style={styles.bankTitle}>{w('depositBankTitle')}</Text>
+                  <BankDetailRow label={w('depositBankHolder')} value={WALLET_DEPOSIT_BANK.accountHolder} />
+                  <BankDetailRow label={w('depositBankName')} value={WALLET_DEPOSIT_BANK.bankName} />
+                  <BankDetailRow label={w('depositBankBranch')} value={WALLET_DEPOSIT_BANK.branchName} />
+                  <BankDetailRow
+                    label={w('depositBankAccountNumber')}
+                    value={WALLET_DEPOSIT_BANK.accountNumber}
+                    emphasize
+                  />
+                </View>
+
                 <Text style={styles.fieldLabel}>{w('depositorNameLabel')}</Text>
                 <TextInput
                   value={depositorNameInput}
@@ -350,6 +377,25 @@ export default function TeacherWalletAddMoneyModal({
   );
 }
 
+function BankDetailRow({
+  label,
+  value,
+  emphasize = false,
+}: {
+  label: string;
+  value: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <View style={styles.bankRow}>
+      <Text style={styles.bankLabel}>{label}</Text>
+      <Text selectable style={[styles.bankValue, emphasize && styles.bankValueEmphasize]}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { justifyContent: 'center', paddingHorizontal: 20 },
   backdrop: {
@@ -399,6 +445,20 @@ const styles = StyleSheet.create({
   },
   comingSoonText: { flex: 1, fontSize: 13, color: BRAND_BLUE_DARK, lineHeight: 18 },
   hint: { fontSize: 13, color: TEXT_MUTED, lineHeight: 18 },
+  bankBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    marginTop: 4,
+  },
+  bankTitle: { fontSize: 13, fontWeight: '800', color: BRAND_BLUE_DARK },
+  bankRow: { gap: 2 },
+  bankLabel: { fontSize: 11, fontWeight: '600', color: TEXT_MUTED },
+  bankValue: { fontSize: 14, fontWeight: '700', color: BRAND_BLUE_DARK },
+  bankValueEmphasize: { fontSize: 16, letterSpacing: 0.4 },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: BRAND_BLUE_DARK, marginTop: 4 },
   fieldInput: {
     borderWidth: 1,

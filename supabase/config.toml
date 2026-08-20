@@ -14,3 +14,29 @@ verify_jwt = false
 # Client invokes with Bearer JWT; gateway verify off for OPTIONS/CORS. Auth enforced via auth.getUser().
 [functions.record-login-session]
 verify_jwt = false
+
+# Public OTP before signup; auth is the sealed challenge token, not a user JWT.
+[functions.signup-mobile-otp]
+verify_jwt = false
+
+# Public signup after OTP; no user JWT yet.
+[functions.signup-public]
+verify_jwt = false
+
+# Password login + email OTP; no session JWT on the first request.
+[functions.superadmin-mfa]
+verify_jwt = false
+
+# OPTIONS preflight has no JWT; auth is Bearer + getUser() inside the handler.
+[functions.parent-register-child]
+verify_jwt = false
+
+[functions.parent-remove-student]
+verify_jwt = false
+
+# PayHere HTML checkout + webhook (no browser JWT).
+[functions.payhere-teacher-wallet-checkout]
+verify_jwt = false
+
+[functions.payhere-teacher-wallet-notify]
+verify_jwt = false

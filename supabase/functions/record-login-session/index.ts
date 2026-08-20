@@ -4,18 +4,11 @@
  * Deploy: supabase functions deploy record-login-session
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import { jsonResponse, optionsResponse } from '../_shared/cors.ts';
 import { sendSystemNotificationEmail } from '../_shared/resendMail.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function json(req: Request, body: Record<string, unknown>, status = 200) {
+  return jsonResponse(req, body, status);
 }
 
 function escapeHtml(value: string): string {
@@ -28,11 +21,11 @@ function escapeHtml(value: string): string {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return optionsResponse(req);
   }
 
   if (req.method !== 'POST') {
-    return json({ error: 'method_not_allowed' }, 405);
+    return json(req, { error: 'method_not_allowed' }, 405);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim();
@@ -40,12 +33,12 @@ Deno.serve(async (req) => {
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
 
   if (!supabaseUrl || !anonKey || !serviceRole) {
-    return json({ error: 'server_misconfigured' }, 500);
+    return json(req, { error: 'server_misconfigured' }, 500);
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    return json({ error: 'not_authenticated' }, 401);
+    return json(req, { error: 'not_authenticated' }, 401);
   }
 
   const userClient = createClient(supabaseUrl, anonKey, {
@@ -59,7 +52,7 @@ Deno.serve(async (req) => {
   } = await userClient.auth.getUser();
 
   if (userError || !user) {
-    return json({ error: 'not_authenticated' }, 401);
+    return json(req, { error: 'not_authenticated' }, 401);
   }
 
   let body: {
@@ -70,7 +63,7 @@ Deno.serve(async (req) => {
   try {
     body = await req.json();
   } catch {
-    return json({ error: 'invalid_json' }, 400);
+    return json(req, { error: 'invalid_json' }, 400);
   }
 
   const deviceFingerprint =
@@ -85,7 +78,7 @@ Deno.serve(async (req) => {
       : 'unknown';
 
   if (!deviceFingerprint || deviceFingerprint.length > 256) {
-    return json({ error: 'invalid_device_fingerprint' }, 400);
+    return json(req, { error: 'invalid_device_fingerprint' }, 400);
   }
 
   const admin = createClient(supabaseUrl, serviceRole, {
@@ -103,7 +96,7 @@ Deno.serve(async (req) => {
 
   if (existingError) {
     console.error('[record-login-session] lookup failed', existingError.message);
-    return json({ error: 'db_error', detail: existingError.message }, 500);
+    return json(req, { error: 'db_error', detail: existingError.message }, 500);
   }
 
   const isNewDevice = !existing?.id;
@@ -122,7 +115,7 @@ Deno.serve(async (req) => {
 
   if (upsertError) {
     console.error('[record-login-session] upsert failed', upsertError.message);
-    return json({ error: 'db_error', detail: upsertError.message }, 500);
+    return json(req, { error: 'db_error', detail: upsertError.message }, 500);
   }
 
   let emailSent = false;
@@ -138,8 +131,8 @@ Deno.serve(async (req) => {
       const when = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
       const html = `
         <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
-          <h2 style="color:#123B7A;margin:0 0 12px">New sign-in to your XEN account</h2>
-          <p>A new device just signed in to your XEN account.</p>
+          <h2 style="color:#123B7A;margin:0 0 12px">New sign-in to your MyTuition account</h2>
+          <p>A new device just signed in to your MyTuition account.</p>
           <ul>
             <li><strong>Device:</strong> ${escapeHtml(deviceLabel)}</li>
             <li><strong>Platform:</strong> ${escapeHtml(platform)}</li>
@@ -151,7 +144,7 @@ Deno.serve(async (req) => {
 
       const mail = await sendSystemNotificationEmail(
         email,
-        'Security alert: new device signed in to XEN',
+        'Security alert: new device signed in to MyTuition',
         html,
       );
 
@@ -168,7 +161,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({
+  return json(req, {
     ok: true,
     is_new_device: isNewDevice,
     device_label: deviceLabel,

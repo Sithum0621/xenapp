@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppRoutes } from '@/src/navigation/AppNavigator';
@@ -12,8 +12,8 @@ import { finalizeAuthenticatedLogin } from '@/src/navigation/completeAuthenticat
 import { superadminMfaVerify } from '@/src/services/superadminMfaApi';
 import { supabase } from '@/src/services/supabaseClient';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
@@ -21,7 +21,7 @@ const SUBTLE_BORDER = '#E2E8F0';
 export default function SuperadminVerificationScreen() {
   const { t } = useTranslation();
   const { challengeId } = useLocalSearchParams<{ challengeId?: string }>();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<RNTextInput>(null);
 
   const [code, setCode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     borderWidth: 1.5,
     borderColor: '#BFDBFE',
     alignItems: 'center',
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     padding: 24,
     ...Platform.select({
       ios: {
-        shadowColor: '#123B7A',
+        shadowColor: '#041830',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,

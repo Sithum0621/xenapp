@@ -18,18 +18,11 @@
  * Deploy: `supabase functions deploy superadmin-mfa --no-verify-jwt`
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import { jsonResponse, optionsResponse } from '../_shared/cors.ts';
 import { sendHtmlEmailViaResend } from '../_shared/resendMail.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function json(req: Request, body: Record<string, unknown>, status = 200) {
+  return jsonResponse(req, body, status);
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -111,7 +104,7 @@ async function sendOtpEmail(to: string, code: string): Promise<{ ok: boolean; sk
 
   const sent = await sendHtmlEmailViaResend({
     to,
-    subject: 'XEN — your verification code',
+    subject: 'MyTuition — your verification code',
     html,
   });
 
@@ -123,7 +116,7 @@ async function sendOtpEmail(to: string, code: string): Promise<{ ok: boolean; sk
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return optionsResponse(req);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -131,14 +124,14 @@ Deno.serve(async (req) => {
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!supabaseUrl?.trim() || !anonKey?.trim() || !serviceRole?.trim()) {
-    return json({ error: 'server_misconfigured' }, 500);
+    return json(req, { error: 'server_misconfigured' }, 500);
   }
 
   let body: { action?: string; email?: string; password?: string; challenge_id?: string; code?: string };
   try {
     body = await req.json();
   } catch {
-    return json({ error: 'invalid_json' }, 400);
+    return json(req, { error: 'invalid_json' }, 400);
   }
 
   const admin = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
@@ -148,7 +141,7 @@ Deno.serve(async (req) => {
     const password = typeof body.password === 'string' ? body.password : '';
 
     if (!email || !password) {
-      return json({ error: 'email_password_required' }, 400);
+      return json(req, { error: 'email_password_required' }, 400);
     }
 
     const tokenRes = await fetch(
@@ -178,7 +171,7 @@ Deno.serve(async (req) => {
       !tokenJson.access_token ||
       !tokenJson.user?.id
     ) {
-      return json({ error: 'invalid_credentials', detail: tokenJson.error_description ?? tokenJson.msg }, 401);
+      return json(req, { error: 'invalid_credentials', detail: tokenJson.error_description ?? tokenJson.msg }, 401);
     }
 
     const userId = tokenJson.user.id;
@@ -190,13 +183,13 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (profileErr || profile?.role == null) {
-      return json({ error: 'profile_missing' }, 403);
+      return json(req, { error: 'profile_missing' }, 403);
     }
 
     const role = profile.role as string;
 
     if (role !== 'superadmin' && role !== 'admin') {
-      return json({
+      return json(req, {
         skip_otp: true,
         access_token: tokenJson.access_token,
         refresh_token: tokenJson.refresh_token,
@@ -213,7 +206,7 @@ Deno.serve(async (req) => {
       refreshEncrypted = await encryptRefresh(tokenJson.refresh_token);
     } catch (e) {
       console.error('[superadmin-mfa] encrypt failed', e);
-      return json({ error: 'encrypt_failed' }, 500);
+      return json(req, { error: 'encrypt_failed' }, 500);
     }
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
@@ -228,16 +221,16 @@ Deno.serve(async (req) => {
 
     if (insErr) {
       console.error('[superadmin-mfa] insert challenge', insErr);
-      return json({ error: 'challenge_create_failed' }, 500);
+      return json(req, { error: 'challenge_create_failed' }, 500);
     }
 
     const sent = await sendOtpEmail(email, code);
     if (!sent.ok) {
       await admin.from('superadmin_mfa_challenges').delete().eq('id', challengeId);
-      return json({ error: 'email_send_failed', detail: sent.skippedReason ?? 'unknown' }, 503);
+      return json(req, { error: 'email_send_failed', detail: sent.skippedReason ?? 'unknown' }, 503);
     }
 
-    return json({ challenge_id: challengeId });
+    return json(req, { challenge_id: challengeId });
   }
 
   if (body.action === 'verify') {
@@ -246,7 +239,7 @@ Deno.serve(async (req) => {
     const code = typeof body.code === 'string' ? body.code.trim().replace(/\s/g, '') : '';
 
     if (!challengeId || code.length !== 6 || !/^\d{6}$/.test(code)) {
-      return json({ error: 'invalid_challenge_or_code' }, 400);
+      return json(req, { error: 'invalid_challenge_or_code' }, 400);
     }
 
     const { data: row, error: selErr } = await admin
@@ -256,17 +249,17 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (selErr || !row) {
-      return json({ error: 'challenge_not_found' }, 401);
+      return json(req, { error: 'challenge_not_found' }, 401);
     }
 
     if (new Date(row.expires_at).getTime() <= Date.now()) {
       await admin.from('superadmin_mfa_challenges').delete().eq('id', challengeId);
-      return json({ error: 'challenge_expired' }, 401);
+      return json(req, { error: 'challenge_expired' }, 401);
     }
 
     const expectedHash = await sha256Hex(`${challengeId}:${code}`);
     if (!timingSafeEqualHex(row.otp_hash, expectedHash)) {
-      return json({ error: 'invalid_code' }, 401);
+      return json(req, { error: 'invalid_code' }, 401);
     }
 
     let refreshToken: string;
@@ -275,7 +268,7 @@ Deno.serve(async (req) => {
     } catch (e) {
       console.error('[superadmin-mfa] decrypt failed', e);
       await admin.from('superadmin_mfa_challenges').delete().eq('id', challengeId);
-      return json({ error: 'decrypt_failed' }, 500);
+      return json(req, { error: 'decrypt_failed' }, 500);
     }
 
     await admin.from('superadmin_mfa_challenges').delete().eq('id', challengeId);
@@ -301,14 +294,14 @@ Deno.serve(async (req) => {
 
     if (!refreshRes.ok || !refreshJson.access_token || !refreshJson.refresh_token) {
       console.error('[superadmin-mfa] refresh exchange failed', refreshJson);
-      return json({ error: 'session_exchange_failed', detail: refreshJson.error_description }, 401);
+      return json(req, { error: 'session_exchange_failed', detail: refreshJson.error_description }, 401);
     }
 
-    return json({
+    return json(req, {
       access_token: refreshJson.access_token,
       refresh_token: refreshJson.refresh_token,
     });
   }
 
-  return json({ error: 'unknown_action' }, 400);
+  return json(req, { error: 'unknown_action' }, 400);
 });

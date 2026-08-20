@@ -7,8 +7,9 @@ import { Platform, StyleSheet, View } from 'react-native';
 import ScrollFriendlyPressable from '@/src/components/layout/ScrollFriendlyPressable';
 
 import type { TeacherGroupRouteContext } from '@/src/utils/teacherGroupRouteParams';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 
 type Tile = {
@@ -107,7 +108,7 @@ export default function TeacherGroupDetailMenu({ ctx }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginHorizontal: 18,
+    marginHorizontal: PAGE_EDGE_INSET,
     marginTop: 12,
   },
   grid: {

@@ -2,5 +2,5 @@
 export type FcmRemoteMessage = {
   messageId?: string;
   notification?: { title?: string; body?: string };
-  data?: Record<string, string>;
+  data?: Record<string, unknown>;
 };

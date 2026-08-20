@@ -29,8 +29,8 @@ import {
   type ScheduleTime12Parts,
 } from '@/src/utils/scheduleFormParts';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 const TEXT_MUTED = '#64748B';
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     backgroundColor: PAGE_SURFACE,
   },
-  dayChipSelected: { borderColor: BRAND_BLUE, backgroundColor: '#EFF6FF' },
+  dayChipSelected: { borderColor: BRAND_BLUE, backgroundColor: '#E3F2FD' },
   dayChipPressed: { opacity: 0.88 },
   dayChipText: { fontSize: 12, fontWeight: '700', color: TEXT_MUTED },
   dayChipTextSel: { color: BRAND_BLUE_DARK },
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
     borderColor: BRAND_BLUE,
     borderRadius: 12,
     paddingVertical: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
   },
   revealBtnPressed: { opacity: 0.88 },

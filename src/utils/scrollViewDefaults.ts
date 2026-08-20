@@ -55,14 +55,8 @@ const WEB_HORIZONTAL_SCROLL_STYLE = {
 
 
 /** Applied to vertical scroll surfaces on web (see app/+html.tsx). */
-
-export const WEB_SCROLL_SURFACE_STYLE = Platform.select({
-
-  web: WEB_VERTICAL_SCROLL_STYLE,
-
-  default: {},
-
-});
+export const WEB_SCROLL_SURFACE_STYLE =
+  Platform.OS === 'web' ? WEB_VERTICAL_SCROLL_STYLE : {};
 
 
 
@@ -120,45 +114,17 @@ export const WEB_INTERACTIVE_IN_SCROLL_STYLE = Platform.select({
 
  */
 
-export const SCROLL_MOMENTUM_PROPS: Pick<
+export const SCROLL_MOMENTUM_PROPS = {
 
-  ScrollViewProps,
-
-  | 'decelerationRate'
-
-  | 'scrollEventThrottle'
-
-  | 'nestedScrollEnabled'
-
-  | 'keyboardShouldPersistTaps'
-
-  | 'keyboardDismissMode'
-
-  | 'delaysContentTouches'
-
-  | 'canCancelContentTouches'
-
-  | 'directionalLockEnabled'
-
-  | 'bounces'
-
-  | 'alwaysBounceVertical'
-
-  | 'overScrollMode'
-
-  | 'disableIntervalMomentum'
-
-> = {
-
-  decelerationRate: 'normal',
+  decelerationRate: 'normal' as const,
 
   scrollEventThrottle: 16,
 
   nestedScrollEnabled: true,
 
-  keyboardShouldPersistTaps: 'handled',
+  keyboardShouldPersistTaps: 'handled' as const,
 
-  keyboardDismissMode: 'on-drag',
+  keyboardDismissMode: 'on-drag' as const,
 
   /** Immediate finger tracking — do not wait on child touchables before scrolling. */
 
@@ -174,7 +140,7 @@ export const SCROLL_MOMENTUM_PROPS: Pick<
 
   alwaysBounceVertical: Platform.OS === 'ios',
 
-  overScrollMode: 'always',
+  overScrollMode: 'always' as const,
 
   disableIntervalMomentum: false,
 

@@ -10,8 +10,8 @@ import { countsFromParts } from '@/src/services/studentAttendanceApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const PRESENT_COLOR = '#0F9D58';
 const ABSENT_COLOR = '#B42318';
@@ -109,11 +109,10 @@ const styles = StyleSheet.create({
     ...Platform.select({
       android: { elevation: 2 },
       web: {
-        // @ts-expect-error -- web-only CSS
         boxShadow: '0 6px 14px rgba(14, 47, 99, 0.06)',
-      },
+      } as object,
       default: {
-        shadowColor: '#0E2F63',
+        shadowColor: '#00101F',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.06,
         shadowRadius: 14,

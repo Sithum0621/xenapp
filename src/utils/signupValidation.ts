@@ -1,8 +1,15 @@
-import { isValidEmailAddress, normalizeValidEmail } from '@/src/utils/emailValidation';
 import { isValidNic, normalizeNicInput } from '@/src/utils/nic';
 import { isValidSriLankaMobile, sanitizeSriLankaMobileInput } from '@/src/utils/sriLankaMobile';
+import { normalizeValidEmail } from '@/src/utils/emailValidation';
 
-export type SignupFieldKey = 'fullName' | 'mobileNumber' | 'nicNumber' | 'email' | 'password' | 'terms';
+export type SignupFieldKey =
+  | 'fullName'
+  | 'mobileNumber'
+  | 'nicNumber'
+  | 'email'
+  | 'password'
+  | 'terms'
+  | 'otp';
 
 export type SignupFieldErrors = Partial<Record<SignupFieldKey, string>>;
 
@@ -26,13 +33,16 @@ export function isValidSignupFullName(raw: string): boolean {
   return HAS_LETTER_RE.test(name);
 }
 
-export function validateParentSignupFields(input: {
+/** Shared signup fields for teacher + parent (mobile login + contact email). */
+export function validateSignupFields(input: {
   fullName: string;
   mobileNumber: string;
   nicNumber: string;
   email: string;
   password: string;
   acceptTerms: boolean;
+  mobileVerified: boolean;
+  exemptFromNic?: boolean;
 }): SignupFieldErrors {
   const errors: SignupFieldErrors = {};
 
@@ -48,50 +58,8 @@ export function validateParentSignupFields(input: {
     errors.mobileNumber = 'signup.errors.mobileRequired';
   } else if (!isValidSriLankaMobile(mobile)) {
     errors.mobileNumber = 'signup.errors.mobileInvalid';
-  }
-
-  const nicNorm = normalizeNicInput(input.nicNumber);
-  if (!nicNorm) {
-    errors.nicNumber = 'signup.errors.nicRequired';
-  } else if (!isValidNic(nicNorm)) {
-    errors.nicNumber = 'signup.errors.nicInvalid';
-  }
-
-  const emailRaw = input.email.trim();
-  if (emailRaw && !isValidEmailAddress(emailRaw)) {
-    errors.email = 'signup.errors.emailInvalid';
-  }
-
-  if (!input.password.trim()) {
-    errors.password = 'signup.errors.passwordRequired';
-  } else if (input.password.length < PASSWORD_MIN) {
-    errors.password = 'signup.errors.passwordMin';
-  } else if (input.password.length > PASSWORD_MAX) {
-    errors.password = 'signup.errors.passwordMax';
-  }
-
-  if (!input.acceptTerms) {
-    errors.terms = 'signup.errors.termsRequired';
-  }
-
-  return errors;
-}
-
-export function validateTeacherSignupFields(input: {
-  fullName: string;
-  nicNumber: string;
-  email: string;
-  password: string;
-  acceptTerms: boolean;
-  exemptFromNic: boolean;
-}): SignupFieldErrors {
-  const errors: SignupFieldErrors = {};
-
-  const fullName = input.fullName.trim();
-  if (!fullName) {
-    errors.fullName = 'signup.errors.fullNameRequired';
-  } else if (!isValidSignupFullName(fullName)) {
-    errors.fullName = 'signup.errors.fullNameInvalid';
+  } else if (!input.mobileVerified) {
+    errors.otp = 'signup.errors.mobileOtpRequired';
   }
 
   if (!input.exemptFromNic) {
@@ -103,10 +71,7 @@ export function validateTeacherSignupFields(input: {
     }
   }
 
-  const emailNorm = normalizeValidEmail(input.email);
-  if (!input.email.trim()) {
-    errors.email = 'signup.errors.emailRequired';
-  } else if (!emailNorm) {
+  if (input.email.trim() && !normalizeValidEmail(input.email)) {
     errors.email = 'signup.errors.emailInvalid';
   }
 
@@ -125,12 +90,52 @@ export function validateTeacherSignupFields(input: {
   return errors;
 }
 
+/** @deprecated Prefer validateSignupFields */
+export function validateParentSignupFields(input: {
+  fullName: string;
+  mobileNumber: string;
+  nicNumber: string;
+  email: string;
+  password: string;
+  acceptTerms: boolean;
+  mobileVerified?: boolean;
+}): SignupFieldErrors {
+  return validateSignupFields({
+    ...input,
+    mobileVerified: input.mobileVerified ?? true,
+  });
+}
+
+/** @deprecated Prefer validateSignupFields */
+export function validateTeacherSignupFields(input: {
+  fullName: string;
+  nicNumber: string;
+  email: string;
+  password: string;
+  acceptTerms: boolean;
+  exemptFromNic: boolean;
+  mobileNumber?: string;
+  mobileVerified?: boolean;
+}): SignupFieldErrors {
+  return validateSignupFields({
+    fullName: input.fullName,
+    mobileNumber: input.mobileNumber ?? '',
+    nicNumber: input.nicNumber,
+    email: input.email,
+    password: input.password,
+    acceptTerms: input.acceptTerms,
+    mobileVerified: input.mobileVerified ?? true,
+    exemptFromNic: input.exemptFromNic,
+  });
+}
+
 export function firstSignupFieldError(errors: SignupFieldErrors): string | null {
   const order: SignupFieldKey[] = [
     'fullName',
     'mobileNumber',
-    'nicNumber',
+    'otp',
     'email',
+    'nicNumber',
     'password',
     'terms',
   ];

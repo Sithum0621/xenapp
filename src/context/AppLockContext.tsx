@@ -4,6 +4,11 @@ import { AppState } from 'react-native';
 
 import { appLockGetStatus, type AppLockStatus } from '@/src/services/appLockApi';
 import { supabase } from '@/src/services/supabaseClient';
+import {
+  clearAppBackgrounded,
+  markAppBackgrounded,
+  wasAwayLongerThanGrace,
+} from '@/src/utils/appAwayGrace';
 
 type AppLockContextValue = {
   status: AppLockStatus | null;
@@ -21,10 +26,13 @@ const GATE_SKIP_PREFIXES = [
   '/login',
   '/signup',
   '/language',
+  '/welcome',
   '/role-select',
   '/auth',
   '/superadmin-verify',
   '/payment-plan',
+  '/policies',
+  '/terms-and-conditions',
   '/super-admin-dashboard',
   '/super-admin-institute',
   '/super-admin-games-schedule-event',
@@ -41,7 +49,7 @@ export function AppLockProvider({ children }: { children: React.ReactNode }) {
   const launchPolicyAppliedRef = useRef(false);
   /**
    * After interactive `SIGNED_IN`, do not run the "no PIN → sign out" branch on first dashboard entry;
-   * still show the PIN gate when app lock is enabled.
+   * still show the PIN gate when app lock is enabled and away longer than grace.
    */
   const suppressLaunchSignOutRef = useRef(false);
 
@@ -88,10 +96,10 @@ export function AppLockProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         launchPolicyAppliedRef.current = false;
         suppressLaunchSignOutRef.current = false;
+        void clearAppBackgrounded();
         return;
       }
       if (event === 'INITIAL_SESSION') {
-        // Restored session (app launch): allow launch policy to run once on the dashboard.
         launchPolicyAppliedRef.current = false;
         suppressLaunchSignOutRef.current = false;
         void refresh();
@@ -100,6 +108,7 @@ export function AppLockProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN') {
         launchPolicyAppliedRef.current = false;
         suppressLaunchSignOutRef.current = true;
+        void clearAppBackgrounded();
         void refresh();
         return;
       }
@@ -116,11 +125,26 @@ export function AppLockProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'background' || next === 'inactive') {
+        if (!skipRef.current) {
+          void markAppBackgrounded();
+        }
+        return;
+      }
+      if (next !== 'active') return;
+
+      void (async () => {
         const s = statusRef.current;
-        if (!skipRef.current && s?.enabled && s?.pinIsSet) {
+        const pinProtects = Boolean(s?.enabled && s?.pinIsSet);
+        if (skipRef.current || !pinProtects) {
+          void clearAppBackgrounded();
+          return;
+        }
+        const away = await wasAwayLongerThanGrace();
+        if (away) {
           setForegroundLocked(true);
         }
-      }
+        await clearAppBackgrounded();
+      })();
     });
     return () => sub.remove();
   }, []);
@@ -138,9 +162,8 @@ export function AppLockProvider({ children }: { children: React.ReactNode }) {
   }, [skipGatePath]);
 
   /**
-   * Cold start / fresh reopen: if the user is signed in on a protected route and app lock is fully on
-   * (`enabled` + `pinIsSet`), require PIN immediately. Otherwise clear the Supabase session so they
-   * must log in again. Skipped on auth/onboarding paths and when status RPC failed (avoid lockouts).
+   * Cold start / fresh reopen: PIN unlock or forced logout only after ~10 minutes away.
+   * Brief app switches stay signed in / unlocked.
    */
   useEffect(() => {
     if (loading) return;
@@ -168,18 +191,23 @@ export function AppLockProvider({ children }: { children: React.ReactNode }) {
 
       launchPolicyAppliedRef.current = true;
 
+      const away = await wasAwayLongerThanGrace();
       const pinProtects = Boolean(status?.enabled && status?.pinIsSet);
-      if (pinProtects) {
+
+      if (pinProtects && away) {
         setForegroundLocked(true);
-      } else if (!suppressLaunchSignOutRef.current) {
+      } else if (!pinProtects && away && !suppressLaunchSignOutRef.current) {
         await supabase.auth.signOut();
       }
+
+      await clearAppBackgrounded();
       suppressLaunchSignOutRef.current = false;
     })();
   }, [loading, status?.enabled, status?.pinIsSet, statusError, skipGatePath]);
 
   const dismissGate = useCallback(() => {
     setForegroundLocked(false);
+    void clearAppBackgrounded();
   }, []);
 
   const gateRequiresUnlock = Boolean(

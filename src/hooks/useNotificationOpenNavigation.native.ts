@@ -9,6 +9,7 @@ import {
   routeFromNotifeeNotification,
   routeFromRemoteMessage,
 } from '@/src/push/displaySystemNotification';
+import type { FcmRemoteMessage } from '@/src/push/fcmRemoteMessage';
 
 export function useNotificationOpenNavigation(enabled = true): void {
   const router = useRouter();
@@ -26,13 +27,15 @@ export function useNotificationOpenNavigation(enabled = true): void {
     })();
 
     const unsubscribeFcm = messaging().onNotificationOpenedApp((remoteMessage) => {
-      const route = routeFromRemoteMessage(remoteMessage);
+      const route = routeFromRemoteMessage(remoteMessage as FcmRemoteMessage);
       if (route) router.push(route as never);
     });
 
     const unsubscribeNotifeeForeground = notifee.onForegroundEvent((event) => {
       if (!isNotifeePressEvent(event)) return;
-      const route = routeFromNotifeeNotification(event.detail.notification);
+      const route = routeFromNotifeeNotification(
+        (event.detail.notification ?? null) as never,
+      );
       if (route) router.push(route as never);
     });
 

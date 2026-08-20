@@ -142,7 +142,7 @@ function parseReleaseRecord(row: Record<string, unknown>): AndroidAppReleaseReco
 }
 
 export function buildDefaultAppUpdateNotifyBody(versionName: string, versionCode: number): string {
-  return `XEN ${versionName} (build ${versionCode}) is ready to install. Open Settings → App update to download.`;
+  return `MyTuition ${versionName} (build ${versionCode}) is ready to install. Open Settings → App update to download.`;
 }
 
 export async function fetchAndroidReleaseHistory(

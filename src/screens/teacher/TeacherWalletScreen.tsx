@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -33,8 +34,8 @@ import { TextInput } from '@/src/theme/TextInput';
 import { formatLkrFromCents } from '@/src/utils/classesPlaceholderBilling';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const PAGE_BG = '#F8FAFC';
@@ -123,11 +124,18 @@ function TransactionRow({
 
 export default function TeacherWalletScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ payhere?: string }>();
+  const params = useLocalSearchParams<{
+    payhere?: string;
+    addMoney?: string;
+    tab?: string;
+    amount?: string;
+  }>();
   const { t, i18n } = useTranslation();
   const w = (k: string, o?: Record<string, unknown>) => t(`teacherDashboard.wallet.${k}`, o);
 
   const [addMoneyOpen, setAddMoneyOpen] = useState(false);
+  const [addMoneyTab, setAddMoneyTab] = useState<'payhere' | 'manual'>('manual');
+  const [addMoneyAmount, setAddMoneyAmount] = useState('');
   const [action, setAction] = useState<WalletAction>(null);
   const [amountInput, setAmountInput] = useState('');
   const [noteInput, setNoteInput] = useState('');
@@ -168,6 +176,16 @@ export default function TeacherWalletScreen() {
       SessionCacheKeys.TEACHER_DASHBOARD_OVERVIEW,
     ]);
   }, []);
+
+  useEffect(() => {
+    if (params.addMoney !== '1') return;
+    setAddMoneyTab(params.tab === 'payhere' ? 'payhere' : 'manual');
+    setAddMoneyAmount(typeof params.amount === 'string' ? params.amount : '');
+    setAddMoneyOpen(true);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.history.replaceState({}, '', AppRoutes.teacherWallet);
+    }
+  }, [params.addMoney, params.tab, params.amount]);
 
   useEffect(() => {
     if (!params.payhere) return;
@@ -222,6 +240,7 @@ export default function TeacherWalletScreen() {
         case 'payment_received':
           return w('txPaymentReceived');
         default:
+          if ((tx.note ?? '').toLowerCase().includes('sms credit')) return w('txSmsCredit');
           return w('txAdjustment');
       }
     },
@@ -278,7 +297,11 @@ export default function TeacherWalletScreen() {
           <ScrollFriendlyPressable
             accessibilityRole="button"
             accessibilityLabel={w('addMoneyA11y')}
-            onPress={() => setAddMoneyOpen(true)}
+            onPress={() => {
+              setAddMoneyTab('manual');
+              setAddMoneyAmount('');
+              setAddMoneyOpen(true);
+            }}
             style={styles.actionBtnPrimary}
             innerStyle={styles.actionBtnPrimaryInner}>
             <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
@@ -339,6 +362,8 @@ export default function TeacherWalletScreen() {
         visible={addMoneyOpen}
         onClose={() => setAddMoneyOpen(false)}
         onSuccess={handleAddMoneySuccess}
+        initialTab={addMoneyTab}
+        initialAmount={addMoneyAmount}
       />
 
       <View style={styles.pageHeader}>
@@ -416,7 +441,7 @@ export default function TeacherWalletScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: PAGE_BG },
   pageHeader: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 10,
     gap: 6,
@@ -437,7 +462,7 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 22, fontWeight: '800', color: BRAND_BLUE_DARK },
   main: { flex: 1 },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 32, gap: 16 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   muted: { fontSize: 14, color: TEXT_MUTED, fontWeight: '600' },
   errorBox: {

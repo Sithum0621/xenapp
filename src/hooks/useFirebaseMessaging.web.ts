@@ -5,7 +5,11 @@ import type {
   UseFirebaseMessagingResult,
 } from '@/src/hooks/useFirebaseMessaging.types';
 
-export type { UseFirebaseMessagingOptions, UseFirebaseMessagingResult } from '@/src/hooks/useFirebaseMessaging.types';
+export type {
+  ForegroundFcmMessage,
+  UseFirebaseMessagingOptions,
+  UseFirebaseMessagingResult,
+} from '@/src/hooks/useFirebaseMessaging.types';
 
 /** Web: FCM is not available; no-op stub. */
 export function useFirebaseMessaging(

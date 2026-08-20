@@ -6,6 +6,7 @@ import { ActivityIndicator, BackHandler, Platform, StyleSheet, View, type FlatLi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NativeFluidFlatList } from '@/src/components/layout/NativeFluidFlatList';
+import BrandHeader from '@/src/components/parent/BrandHeader';
 import ChatComposer from '@/src/components/parent/chat/ChatComposer';
 import ChatMessageBubble from '@/src/components/parent/chat/ChatMessageBubble';
 import ChatRoomSubHeader from '@/src/components/parent/chat/ChatRoomSubHeader';
@@ -155,6 +156,7 @@ export default function TeacherGroupChatRoomScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <BrandHeader />
       <ChatRoomSubHeader
         groupName={groupName}
         subtitle={instituteName || undefined}
@@ -190,7 +192,7 @@ export default function TeacherGroupChatRoomScreen() {
         }>
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#123B7A" />
+            <ActivityIndicator size="large" color="#041830" />
           </View>
         ) : error ? (
           <View style={styles.centered}>
@@ -204,6 +206,7 @@ export default function TeacherGroupChatRoomScreen() {
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={listEmpty}
+            {...FLAT_LIST_PERF_SCROLLABLE}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             onContentSizeChange={() => {
@@ -211,7 +214,6 @@ export default function TeacherGroupChatRoomScreen() {
                 listRef.current?.scrollToEnd({ animated: false });
               }
             }}
-            {...FLAT_LIST_PERF_SCROLLABLE}
           />
         )}
       </GroupChatRoomShell>

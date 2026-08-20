@@ -9,10 +9,10 @@ import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { clearSessionCountdown } from '@/src/services/sessionManager';
 import { supabase } from '@/src/services/supabaseClient';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
-const SIDEBAR_BG = '#0E2F63';
-const SIDEBAR_ACTIVE = '#123B7A';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
+const SIDEBAR_BG = '#00101F';
+const SIDEBAR_ACTIVE = '#041830';
 const TEXT_ON_NAV = '#FFFFFF';
 const TEXT_ON_NAV_MUTED = 'rgba(255,255,255,0.72)';
 const SUBTLE_LINE = 'rgba(255,255,255,0.12)';

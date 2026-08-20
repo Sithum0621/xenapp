@@ -7,38 +7,31 @@
  *   supabase functions deploy process-class-reminders --no-verify-jwt
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
+import { jsonResponse, optionsResponse } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function json(req: Request, body: Record<string, unknown>, status = 200) {
+  return jsonResponse(req, body, status);
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return optionsResponse(req);
   }
 
   if (req.method !== 'POST') {
-    return json({ error: 'method_not_allowed' }, 405);
+    return json(req, { error: 'method_not_allowed' }, 405);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim();
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
 
   if (!supabaseUrl || !serviceRole) {
-    return json({ error: 'server_misconfigured' }, 500);
+    return json(req, { error: 'server_misconfigured' }, 500);
   }
 
   const authHeader = req.headers.get('Authorization')?.trim();
   if (authHeader !== `Bearer ${serviceRole}`) {
-    return json({ error: 'forbidden' }, 403);
+    return json(req, { error: 'forbidden' }, 403);
   }
 
   let timezone = 'Asia/Colombo';
@@ -60,8 +53,8 @@ Deno.serve(async (req) => {
   });
 
   if (error) {
-    return json({ error: 'rpc_failed', detail: error.message }, 500);
+    return json(req, { error: 'rpc_failed', detail: error.message }, 500);
   }
 
-  return json({ ok: true, result: data });
+  return json(req, { ok: true, result: data });
 });

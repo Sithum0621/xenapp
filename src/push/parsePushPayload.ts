@@ -29,7 +29,7 @@ export function parsePushPayload(remoteMessage: FcmRemoteMessage): XenPushPayloa
   const title =
     remoteMessage.notification?.title ??
     asString(data.title) ??
-    'XEN';
+    'MyTuition';
   const body =
     remoteMessage.notification?.body ?? asString(data.body) ?? '';
 
@@ -51,7 +51,7 @@ export function parsePushPayload(remoteMessage: FcmRemoteMessage): XenPushPayloa
     } else if (notificationType === 'class_reminder') {
       conversationTitle = groupName ?? 'Class reminder';
     } else if (notificationType === 'class_daily_schedule') {
-      conversationTitle = groupName ?? 'Class today';
+      conversationTitle = groupName ?? 'Upcoming class';
     } else if (notificationType === 'app_update') {
       conversationTitle = 'App update';
     } else if (notificationType === 'wallet_top_up') {

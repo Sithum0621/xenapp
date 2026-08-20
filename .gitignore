@@ -55,3 +55,8 @@ xen/
 # generated native folders
 /ios
 /android
+
+.vercel
+
+# local APK staging (never commit)
+/tmp-apk/

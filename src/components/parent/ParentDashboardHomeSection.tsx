@@ -20,6 +20,7 @@ import StudentSwitcher from '@/src/components/parent/StudentSwitcher';
 import TodayScheduleCard from '@/src/components/parent/TodayScheduleCard';
 import type { ParentLinkedStudent } from '@/src/services/parentStudentsApi';
 import { Text } from '@/src/theme/Text';
+import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
 import {
   parentBorder,
@@ -140,7 +141,7 @@ function ParentDashboardHomeSection({
           />
         </AnimatedCard>
         <AnimatedCard delay={100} instant={skipEntranceAnimation}>
-          <MyClassCardButton studentUserId={selectedStudentId} />
+          <MyClassCardButton />
         </AnimatedCard>
         <AnimatedCard delay={140} instant={skipEntranceAnimation}>
           <TodayScheduleCard studentUserId={selectedStudentId} isActive={isVisible} />
@@ -198,8 +199,8 @@ export default memo(ParentDashboardHomeSection);
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: PAGE_CONTENT_TOP,
     flexGrow: 1,
   },
   sectionBody: { gap: 14, pointerEvents: 'box-none' },

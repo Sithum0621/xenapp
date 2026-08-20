@@ -24,7 +24,7 @@ async function ensureNotifeeChannel(): Promise<void> {
 
   await notifee.createChannel({
     id: XEN_NOTIFICATION_CHANNEL_ID,
-    name: 'XEN',
+    name: 'MyTuition',
     description: 'Class attendance, exams, and account alerts',
     importance: AndroidImportance.HIGH,
     sound: 'default',

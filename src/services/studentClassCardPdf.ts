@@ -88,7 +88,7 @@ export function buildClassCardPdfHtml(
 ): string {
   const displayName = escapeHtml(formatStudentDisplayName(card.fullName));
   const displayContact = escapeHtml(formatContactNumber(card.mobileNumber));
-  const studentId = escapeHtml(card.xenStudentId);
+  const studentId = displayContact;
   const title = escapeHtml(labels.documentTitle);
 
   return `<!DOCTYPE html>
@@ -104,7 +104,7 @@ export function buildClassCardPdfHtml(
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      color: #0e2f63;
+      color: #00101F;
       background: #fff;
     }
     .page {
@@ -134,7 +134,7 @@ export function buildClassCardPdfHtml(
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: #123b7a;
+      color: #041830;
     }
     .id-card {
       width: ${ID_CARD_WIDTH_MM}mm;
@@ -244,10 +244,6 @@ export function buildClassCardPdfHtml(
                 <p class="field-label">${escapeHtml(labels.idLabel)}</p>
                 <p class="field-value">${studentId}</p>
               </div>
-              <div class="field">
-                <p class="field-label">${escapeHtml(labels.contactLabel)}</p>
-                <p class="field-value">${displayContact}</p>
-              </div>
             </div>
           </div>
         </div>
@@ -346,7 +342,10 @@ export async function generateStudentClassCardPdf(
       return { ok: false, error: 'PDF file was not created.', code: 'no_uri' };
     }
 
-    const fileUri = await persistClassCardPdf(tempUri, card.xenStudentId);
+    const fileUri = await persistClassCardPdf(
+      tempUri,
+      card.mobileNumber || card.studentUserId,
+    );
     return { ok: true, fileUri };
   } catch (e) {
     return {

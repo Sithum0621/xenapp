@@ -14,9 +14,10 @@ import {
   removeParentStudent,
   updateParentStudentName,
 } from '@/src/services/parentStudentManageApi';
+import { formatSriLankaMobileDisplay } from '@/src/utils/sriLankaMobile';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
@@ -219,9 +220,12 @@ export default function ParentProfileStudentsSection() {
                         ? t('parentDashboard.studentSwitcherSelfTag')
                         : t('parentDashboard.profileStudentsChildLabel')}
                     </Text>
-                    {student.xenStudentId ? (
+                    {student.mobileNumber ? (
                       <View style={styles.xenBadge}>
-                        <Text style={styles.xenBadgeText}>{student.xenStudentId}</Text>
+                        <Text style={styles.xenBadgeText}>
+                          {formatSriLankaMobileDisplay(student.mobileNumber) ??
+                            student.mobileNumber}
+                        </Text>
                       </View>
                     ) : null}
                   </View>

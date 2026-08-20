@@ -10,15 +10,10 @@ import {
 } from 'react-native';
 
 import { ScrollView } from '@/src/components/layout/scroll';
-
-import { Text } from '@/src/theme/Text';
+import { useAppThemeColors } from '@/src/context/ThemePreferenceContext';
 import { setStoredLanguagePreference, type StoredLangCode } from '@/src/services/languagePreference';
-import {
-  parentBrandBlue,
-  parentBrandBlueDark,
-  parentBorder,
-  parentInkSoft,
-} from '@/src/theme/parentDashboardPalette';
+import { Text } from '@/src/theme/Text';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -49,6 +44,7 @@ export type SettingsLanguageScreenProps = {
 
 export default function SettingsLanguageScreen({ subtitleKey }: SettingsLanguageScreenProps) {
   const { t, i18n } = useTranslation();
+  const colors = useAppThemeColors();
   const current = normalizeAppLanguage(i18n.language);
 
   const select = (code: StoredLangCode) => {
@@ -58,9 +54,11 @@ export default function SettingsLanguageScreen({ subtitleKey }: SettingsLanguage
   };
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.scroll, { backgroundColor: colors.page }]}
+      contentContainerStyle={styles.content}>
       {subtitleKey ? (
-        <Text style={styles.sectionLead}>{t(subtitleKey)}</Text>
+        <Text style={[styles.sectionLead, { color: colors.textSoft }]}>{t(subtitleKey)}</Text>
       ) : null}
 
       <View style={styles.list}>
@@ -74,14 +72,23 @@ export default function SettingsLanguageScreen({ subtitleKey }: SettingsLanguage
               onPress={() => select(code)}
               style={({ pressed }) => [
                 styles.row,
-                active && styles.rowActive,
+                {
+                  borderColor: active ? colors.brandOrange : colors.border,
+                  backgroundColor: active ? colors.selectionWash : colors.surfaceAlt,
+                },
                 pressed && styles.rowPressed,
               ]}>
-              <Text style={[styles.rowLabel, active && styles.rowLabelActive]}>{t(labelKey)}</Text>
+              <Text
+                style={[
+                  styles.rowLabel,
+                  { color: active ? colors.brandBlueDark : colors.text },
+                ]}>
+                {t(labelKey)}
+              </Text>
               {active ? (
-                <Ionicons name="checkmark-circle" size={22} color={parentBrandBlue} />
+                <Ionicons name="checkmark-circle" size={22} color={colors.brandOrange} />
               ) : (
-                <View style={styles.radioOuter} />
+                <View style={[styles.radioOuter, { borderColor: colors.border }]} />
               )}
             </Pressable>
           );
@@ -93,10 +100,9 @@ export default function SettingsLanguageScreen({ subtitleKey }: SettingsLanguage
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { padding: 24, paddingBottom: 40 },
+  content: { paddingHorizontal: PAGE_EDGE_INSET, paddingTop: 12, paddingBottom: 40 },
   sectionLead: {
     fontSize: 15,
-    color: parentInkSoft,
     marginBottom: 20,
     lineHeight: 22,
   },
@@ -105,29 +111,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 18,
+    paddingHorizontal: PAGE_EDGE_INSET,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: parentBorder,
-    backgroundColor: '#F8FAFC',
-  },
-  rowActive: {
-    borderColor: parentBrandBlue,
-    backgroundColor: '#EFF6FF',
   },
   rowPressed: { opacity: 0.92 },
   rowLabel: {
     flex: 1,
     fontSize: 17,
     fontWeight: '600',
-    color: '#1E293B',
   },
-  rowLabelActive: { color: parentBrandBlueDark },
   radioOuter: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: parentBorder,
   },
 });

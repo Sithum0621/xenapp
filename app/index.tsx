@@ -1,19 +1,43 @@
-import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { usePathname, useRouter } from 'expo-router';
+import { useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 
+import { BrandLoadingScreen } from '@/src/components/BrandLoader';
 import i18n from '@/src/locales/i18n';
 import { AppRoutes, appHref, dashboardRouteForProfileRole } from '@/src/navigation/AppNavigator';
 import { resolveInitialAppNavigation } from '@/src/navigation/appEntry';
+import { normalizeAppPathname } from '@/src/navigation/publicRoutes';
 import { getStoredLanguagePreference } from '@/src/services/languagePreference';
+
+function currentBrowserPath(pathname: string | null): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return window.location.pathname || pathname || '/';
+  }
+  return pathname || '/';
+}
 
 export default function Index() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isColdStartEntry = useMemo(
+    () => normalizeAppPathname(currentBrowserPath(pathname)) === '/',
+    [pathname],
+  );
 
   useEffect(() => {
+    if (!isColdStartEntry) return;
+
     let cancelled = false;
 
     void (async () => {
+      /**
+       * Root `unstable_settings.anchor = 'index'` still mounts this screen when deep-linking
+       * (e.g. `/policies`). Never steal navigation away from that URL.
+       */
+      if (normalizeAppPathname(currentBrowserPath(pathname)) !== '/') {
+        return;
+      }
+
       const nav = await resolveInitialAppNavigation();
       if (cancelled) return;
 
@@ -21,6 +45,11 @@ export default function Index() {
       if (lang) await i18n.changeLanguage(lang);
 
       if (cancelled) return;
+
+      // Re-check after async work — URL may still be a public deep link.
+      if (normalizeAppPathname(currentBrowserPath(pathname)) !== '/') {
+        return;
+      }
 
       switch (nav.destination) {
         case 'dashboard':
@@ -38,7 +67,9 @@ export default function Index() {
           break;
         case 'onboarding':
         default:
-          router.replace(AppRoutes.roleSelect);
+          router.replace(
+            Platform.OS === 'web' ? appHref(AppRoutes.welcome) : AppRoutes.roleSelect,
+          );
           break;
       }
     })();
@@ -46,20 +77,12 @@ export default function Index() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, pathname, isColdStartEntry]);
 
-  return (
-    <View style={styles.boot}>
-      <ActivityIndicator size="large" color="#123B7A" accessibilityLabel="Loading" />
-    </View>
-  );
+  // Anchor-only mount behind a deep link — do not cover the real screen with the loader.
+  if (!isColdStartEntry) {
+    return null;
+  }
+
+  return <BrandLoadingScreen accessibilityLabel="Loading" />;
 }
-
-const styles = StyleSheet.create({
-  boot: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-});

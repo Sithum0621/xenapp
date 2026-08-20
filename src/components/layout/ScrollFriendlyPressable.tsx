@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from 'react';
+import { type ComponentType, type ReactNode, useMemo } from 'react';
 
 import { Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -8,20 +8,24 @@ import { RectButton, type RectButtonProps } from 'react-native-gesture-handler';
 
 import { WEB_INTERACTIVE_IN_SCROLL_STYLE } from '@/src/utils/scrollViewDefaults';
 
-import { scrollSafePressHandler } from '@/src/utils/webScrollTouchBootstrap';
+import { scrollSafePressHandler, blurWebActiveElement } from '@/src/utils/webScrollTouchBootstrap';
+
+const GHRectButton = RectButton as ComponentType<Record<string, unknown>>;
 
 
 
-export type ScrollFriendlyPressableProps = Omit<RectButtonProps, 'style' | 'children'> & {
-
+export type ScrollFriendlyPressableProps = Omit<
+  RectButtonProps,
+  'style' | 'children' | 'onPressIn' | 'onPressOut'
+> & {
   style?: StyleProp<ViewStyle>;
-
   innerStyle?: StyleProp<ViewStyle>;
-
   children: ReactNode;
-
   disabled?: boolean;
-
+  onPressIn?: () => void;
+  onPressOut?: () => void;
+  onHoverIn?: () => void;
+  onHoverOut?: () => void;
 };
 
 
@@ -62,6 +66,14 @@ export default function ScrollFriendlyPressable({
 
   onPress,
 
+  onPressIn,
+
+  onPressOut,
+
+  onHoverIn,
+
+  onHoverOut,
+
   ...rest
 
 }: ScrollFriendlyPressableProps) {
@@ -78,15 +90,26 @@ export default function ScrollFriendlyPressable({
 
       <Pressable
 
+        {...(rest as object)}
+
         disabled={isDisabled}
 
-        onPress={safeOnPress}
+        onPress={() => {
+          safeOnPress?.(false);
+        }}
 
-        style={[style, WEB_INTERACTIVE_IN_SCROLL_STYLE]}
+        onPressIn={() => {
+          blurWebActiveElement();
+          onPressIn?.();
+        }}
 
-        {...rest}>
+        onPressOut={onPressOut}
 
-        <View style={[styles.inner, innerStyle]} pointerEvents="none">
+        {...({ onHoverIn, onHoverOut } as object)}
+
+        style={[style, WEB_INTERACTIVE_IN_SCROLL_STYLE]}>
+
+        <View style={[styles.inner, innerStyle]}>
 
           {children}
 
@@ -102,7 +125,7 @@ export default function ScrollFriendlyPressable({
 
   return (
 
-    <RectButton
+    <GHRectButton
 
       exclusive={exclusive}
 
@@ -116,17 +139,21 @@ export default function ScrollFriendlyPressable({
 
       onPress={safeOnPress}
 
+      onPressIn={onPressIn ? (_inside: boolean) => onPressIn() : undefined}
+
+      onPressOut={onPressOut ? (_inside: boolean) => onPressOut() : undefined}
+
       style={style}
 
-      {...rest}>
+      {...(rest as object)}>
 
-      <View style={[styles.inner, innerStyle]} pointerEvents="none">
+      <View style={[styles.inner, innerStyle]}>
 
         {children}
 
       </View>
 
-    </RectButton>
+    </GHRectButton>
 
   );
 
@@ -139,6 +166,8 @@ const styles = StyleSheet.create({
   inner: {
 
     alignSelf: 'stretch',
+
+    pointerEvents: 'none',
 
   },
 

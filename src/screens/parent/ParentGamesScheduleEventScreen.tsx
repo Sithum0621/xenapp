@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import GamesScheduleExamPaper from '@/src/components/parent/GamesScheduleExamPaper';
 import GamesScheduleExamStartModal from '@/src/components/parent/GamesScheduleExamStartModal';
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import BrandHeader from '@/src/components/parent/BrandHeader';
 import { useActiveGamesScheduleExam } from '@/src/contexts/ActiveGamesScheduleExamContext';
 import { useExamCountdown } from '@/src/hooks/useExamCountdown';
 import {
@@ -201,6 +202,7 @@ export default function ParentGamesScheduleEventScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <BrandHeader />
       <GamesScheduleExamStartModal
         visible={showStartModal}
         durationLabel={durationLabel}
@@ -268,7 +270,7 @@ export default function ParentGamesScheduleEventScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: parentSurfaceAlt },
   topBar: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: parentSurface,
     borderBottomWidth: StyleSheet.hairlineWidth,

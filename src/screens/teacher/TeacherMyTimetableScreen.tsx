@@ -26,8 +26,8 @@ import { jsDowToWeekdayKey } from '@/src/utils/teacherGroupRouteParams';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const PAGE_BG = '#F8FAFC';
@@ -251,7 +251,7 @@ export default function TeacherMyTimetableScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: PAGE_BG },
   toolbar: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
     backgroundColor: PAGE_BG,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   viewTabText: { fontSize: 14, fontWeight: '700', color: TEXT_MUTED },
   viewTabTextActive: { color: BRAND_BLUE_DARK },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 28, gap: 16 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28, gap: 16 },
   centerBox: { alignItems: 'center', paddingVertical: 40, gap: 10 },
   muted: { fontSize: 14, color: TEXT_MUTED, fontWeight: '600' },
   errorBox: {

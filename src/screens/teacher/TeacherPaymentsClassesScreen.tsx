@@ -19,8 +19,8 @@ import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const PAGE_BG = '#F8FAFC';
@@ -156,14 +156,14 @@ export default function TeacherPaymentsClassesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: PAGE_BG },
-  pageHeader: { paddingHorizontal: 18, paddingBottom: 12, gap: 4 },
+  pageHeader: { paddingHorizontal: 16, paddingBottom: 12, gap: 4 },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 4 },
   backRowPressed: { opacity: 0.7 },
   backLabel: { fontSize: 16, fontWeight: '600', color: BRAND_BLUE_DARK },
   pageTitle: { fontSize: 22, fontWeight: '800', color: BRAND_BLUE_DARK },
   pageSubtitle: { fontSize: 14, color: TEXT_MUTED, lineHeight: 20 },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 18, paddingBottom: 32, gap: 12 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 32, gap: 12 },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',

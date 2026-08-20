@@ -1,4 +1,4 @@
-const ONE_HOUR_MS = 60 * 60 * 1000;
+const SESSION_TTL_MS = 10 * 60 * 1000;
 
 let expiresAtMs: number | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -24,12 +24,14 @@ function scheduleWithRemaining(onExpire: () => void) {
 }
 
 export function startSessionCountdown(onExpire: () => void) {
-  expiresAtMs = Date.now() + ONE_HOUR_MS;
+  expiresAtMs = Date.now() + SESSION_TTL_MS;
   scheduleWithRemaining(onExpire);
 }
 
+/** Extend the idle window (e.g. when the app returns to foreground within grace). */
 export function refreshSessionCountdown(onExpire: () => void) {
   if (expiresAtMs == null) return;
+  expiresAtMs = Date.now() + SESSION_TTL_MS;
   scheduleWithRemaining(onExpire);
 }
 

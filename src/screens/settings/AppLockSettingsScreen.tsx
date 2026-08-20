@@ -5,8 +5,9 @@ import { StyleSheet } from 'react-native';
 import { ScrollView } from '@/src/components/layout/scroll';
 
 import AppLockSettingsSection from '@/src/components/app-lock/AppLockSettingsSection';
+import { PAGE_CONTENT_BOTTOM, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 export default function AppLockSettingsScreen() {
   const { t } = useTranslation();
 
@@ -20,7 +21,11 @@ export default function AppLockSettingsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 4 },
+  content: {
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingBottom: PAGE_CONTENT_BOTTOM,
+    paddingTop: 4,
+  },
   lead: {
     fontSize: 15,
     lineHeight: 22,

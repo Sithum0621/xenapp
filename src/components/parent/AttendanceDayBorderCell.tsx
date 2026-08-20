@@ -7,7 +7,7 @@ import type { AttendanceDaySummary } from '@/src/utils/attendanceDaySummary';
 
 const NEUTRAL_BORDER = '#E2E8F0';
 const NEUTRAL_BG = '#F8FAFC';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 
 export type AttendanceDayBorderCellProps = {

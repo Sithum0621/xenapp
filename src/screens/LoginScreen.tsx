@@ -1,26 +1,32 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { appAlert } from '@/src/utils/appAlert';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Image, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandLoadingScreen } from '@/src/components/BrandLoader';
+import MyTuitionLogo from '@/src/components/brand/MyTuitionLogo';
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import { WebPhoneShell } from '@/src/components/layout/WebPhoneShell';
 
 import { LanguageLnToggle } from '@/src/components/LanguageLnToggle';
 import { SriLankaMobileInput } from '@/src/components/auth/SriLankaMobileInput';
-import { AppRoutes, appHref, dashboardRouteForProfileRole, type ProfileRole } from '@/src/navigation/AppNavigator';
-import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
-import { finalizeAuthenticatedLogin } from '@/src/navigation/completeAuthenticatedLogin';
+import { BrandAssets, WOVELLO_WEBSITE_URL } from '@/src/constants/brand';
+import { useAppThemeColors } from '@/src/context/ThemePreferenceContext';
 import { DESIGNATED_SUPERADMIN_EMAIL, isDesignatedSuperadminMfaEmail } from '@/src/constants/superadminMfa';
+import { AppRoutes, appHref, dashboardRouteForProfileRole, type ProfileRole } from '@/src/navigation/AppNavigator';
+import { finalizeAuthenticatedLogin } from '@/src/navigation/completeAuthenticatedLogin';
 import { getStoredLanguagePreference } from '@/src/services/languagePreference';
 import { superadminMfaStart } from '@/src/services/superadminMfaApi';
 import { supabase } from '@/src/services/supabaseClient';
 import { fetchTempPasswordStatus } from '@/src/services/tempPasswordApi';
 import { roleUsesTempPassword } from '@/src/utils/tempPasswordPolicy';
+import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 import {
   parseLoginIdentifier,
   parseSriLankaMobile,
@@ -33,11 +39,13 @@ import {
   isProfileFetchServerError,
 } from '@/src/utils/profileFetchErrors';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
+
+const WOVELLO_LOGO = BrandAssets.poweredByWovello;
 
 function roleLabelKey(role: string | undefined): string {
   switch (role) {
@@ -53,8 +61,18 @@ function roleLabelKey(role: string | undefined): string {
   }
 }
 
-export default function LoginScreen() {
+export type LoginScreenProps = {
+  /**
+   * Branded welcome entry (logo + tagline + powered by).
+   * No back button — this is the app’s main sign-in screen.
+   */
+  asWelcome?: boolean;
+};
+
+export default function LoginScreen({ asWelcome = false }: LoginScreenProps) {
   const { t, i18n } = useTranslation();
+  const colors = useAppThemeColors();
+  const insets = useSafeAreaInsets();
   const { role, superadmin_hint, profileIssue } = useLocalSearchParams<{
     role?: string;
     superadmin_hint?: string;
@@ -69,17 +87,37 @@ export default function LoginScreen() {
   const [checkingSession, setCheckingSession] = useState(true);
   /** Session exists but loading `profiles.role` failed (e.g. HTTP 500) — offer retry without signing out. */
   const [profileGateFailed, setProfileGateFailed] = useState(false);
+  const [secretTapCount, setSecretTapCount] = useState(0);
+  /** Hidden 7-tap fills designated superadmin email — switch field to email mode. */
+  const [emailLoginOverride, setEmailLoginOverride] = useState(false);
 
   const hasRoleContext = role === 'admin' || role === 'teacher' || role === 'parent' || role === 'parent_student';
-  const isStudentLogin = role === 'parent_student' || role === 'parent';
-  const showSignupLink = role === 'teacher' || isStudentLogin;
-  const signupRoleParam = role === 'teacher' ? 'teacher' : 'parent_student';
-  const signupLinkLabel =
-    role === 'teacher' ? t('auth.createAccount') : t('signup.createAccount');
-  const useLoginOnlyHeading = !showSignupLink;
+  const isAdminLogin = role === 'admin';
+  const useMobileLoginField = !isAdminLogin && !emailLoginOverride;
+  const showSignupLink = role !== 'admin';
+  const signupRoleParam = role === 'teacher' ? 'teacher' : role === 'parent' || role === 'parent_student' ? 'parent_student' : undefined;
+  const signupLinkLabel = t('auth.createAccount');
+  const useLoginOnlyHeading = asWelcome || role === 'admin' || !hasRoleContext;
   const roleLabel = useMemo(() => t(roleLabelKey(role)), [role, t]);
-  const identifierLabel = t('auth.identifier');
-  const identifierPlaceholder = t('auth.identifierPlaceholder');
+  const identifierLabel = isAdminLogin || emailLoginOverride ? t('auth.identifierEmail') : t('auth.identifier');
+  const identifierPlaceholder =
+    isAdminLogin || emailLoginOverride
+      ? t('auth.identifierEmailPlaceholder')
+      : t('auth.identifierPlaceholder');
+
+  const wovelloLogo = WOVELLO_LOGO;
+
+  const handleHiddenSuperadminAccess = useCallback(() => {
+    setSecretTapCount((prev) => {
+      const next = prev + 1;
+      if (next >= 7) {
+        setEmailLoginOverride(true);
+        setIdentifier(DESIGNATED_SUPERADMIN_EMAIL);
+        return 0;
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -90,6 +128,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (superadmin_hint === '1') {
+      setEmailLoginOverride(true);
       setIdentifier(DESIGNATED_SUPERADMIN_EMAIL);
     }
   }, [superadmin_hint]);
@@ -207,7 +246,7 @@ export default function LoginScreen() {
       return null;
     }
 
-    if (isStudentLogin) {
+    if (useMobileLoginField) {
       const mobile = mobileNumber.trim();
       if (!mobile) {
         setErrorMessage(t('signup.errors.mobileRequired'));
@@ -233,7 +272,7 @@ export default function LoginScreen() {
   };
 
   const handleForgotPassword = async () => {
-    if (isStudentLogin) {
+    if (useMobileLoginField) {
       setErrorMessage(t('auth.errors.forgotPhoneAccountHint'));
       return;
     }
@@ -421,150 +460,223 @@ export default function LoginScreen() {
   };
 
   if (checkingSession) {
-    return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-        <View style={styles.bootLoading}>
-          <ActivityIndicator size="large" color={BRAND_BLUE} />
-        </View>
-      </SafeAreaView>
-    );
+    return <BrandLoadingScreen accessibilityLabel="Loading" />;
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-      <KeyboardAwareScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        keyboardExtraPadding={32}>
-        <View style={styles.navRow}>
+    <WebPhoneShell backdropColor={colors.page} contentStyle={{ backgroundColor: colors.page }}>
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: asWelcome ? colors.brandSurface : colors.page }]}
+        edges={asWelcome ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom']}>
+        <View style={[styles.pageCol, { backgroundColor: colors.page, flex: 1 }]}>
+          {asWelcome ? (
+            <LinearGradient
+              colors={[...colors.brandSurfaceGradient]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.welcomeHeader}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('common.appName')}
+                onPress={handleHiddenSuperadminAccess}
+                style={styles.brandTitleTapZone}>
+                <MyTuitionLogo variant="full" showWordmark style={styles.fullLogo} />
+              </Pressable>
+              <Text style={[styles.brandTagline, { color: colors.brandBlueDark }]}>
+                {t('languageSelect.tagline')}
+              </Text>
+            </LinearGradient>
+          ) : null}
+
+          <KeyboardAwareScrollView
+            style={[styles.scroll, { backgroundColor: colors.page }]}
+            contentContainerStyle={styles.content}
+            keyboardExtraPadding={32}>
+            <View style={styles.navRow}>
+              {!asWelcome ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('auth.back')}
+                  onPress={() => routerBackOrReplace(router, appHref(AppRoutes.roleSelect))}
+                  style={({ pressed }) => [styles.backCompact, pressed && styles.backRowPressed]}>
+                  <Ionicons name="chevron-back" size={22} color={colors.brandBlueDark} />
+                  <Text style={[styles.backText, { color: colors.brandBlueDark }]}>{t('auth.back')}</Text>
+                </Pressable>
+              ) : null}
+              <View style={styles.navRowSpacer} />
+              <LanguageLnToggle />
+            </View>
+
           <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('auth.back')}
-            onPress={() => routerBackOrReplace(router, appHref(AppRoutes.roleSelect))}
-            style={({ pressed }) => [styles.backCompact, pressed && styles.backRowPressed]}>
-            <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
-            <Text style={styles.backText}>{t('auth.back')}</Text>
+            accessibilityRole="header"
+            accessibilityLabel={
+              asWelcome
+                ? t('roleSelect.welcome')
+                : useLoginOnlyHeading
+                  ? t('auth.titleLoginOnly')
+                  : t('auth.title')
+            }
+            onPress={handleHiddenSuperadminAccess}
+            style={styles.headingTapZone}>
+            <Text style={[styles.heading, { color: colors.brandBlueDark }]}>
+              {asWelcome
+                ? t('roleSelect.welcome')
+                : useLoginOnlyHeading
+                  ? t('auth.titleLoginOnly')
+                  : t('auth.title')}
+            </Text>
           </Pressable>
-          <View style={styles.navRowSpacer} />
-          <LanguageLnToggle />
-        </View>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            {asWelcome
+              ? t('auth.subtitleNoRole')
+              : hasRoleContext
+                ? t('auth.subtitle', { role: roleLabel })
+                : t('auth.subtitleNoRole')}
+          </Text>
 
-        <Text style={styles.heading} accessibilityRole="header">
-          {useLoginOnlyHeading ? t('auth.titleLoginOnly') : t('auth.title')}
-        </Text>
-        <Text style={styles.subtitle}>
-          {hasRoleContext ? t('auth.subtitle', { role: roleLabel }) : t('auth.subtitleNoRole')}
-        </Text>
+          <View style={styles.formCard}>
+            {useMobileLoginField ? (
+              <SriLankaMobileInput
+                value={mobileNumber}
+                onChangeText={(value) => {
+                  setMobileNumber(value);
+                  setErrorMessage(null);
+                }}
+                label={t('auth.identifier')}
+                placeholder={t('auth.identifierPlaceholder')}
+                labelStyle={styles.label}
+                inputStyle={styles.input}
+                showHint={false}
+                validateOnBlur
+              />
+            ) : (
+              <>
+                <Text style={styles.label}>{identifierLabel}</Text>
+                <TextInput
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  placeholder={identifierPlaceholder}
+                  style={styles.input}
+                  placeholderTextColor="#94A3B8"
+                />
+              </>
+            )}
 
-        <View style={styles.formCard}>
-          {isStudentLogin ? (
-            <SriLankaMobileInput
-              value={mobileNumber}
-              onChangeText={(value) => {
-                setMobileNumber(value);
-                setErrorMessage(null);
-              }}
-              label={t('auth.loginUsername')}
-              hint={t('auth.loginUsernameHint')}
-              placeholder={t('auth.loginUsernamePlaceholder')}
-              labelStyle={styles.label}
-              inputStyle={styles.input}
-              validateOnBlur
-            />
-          ) : (
-            <>
-              <Text style={styles.label}>{identifierLabel}</Text>
+            <Text style={[styles.label, styles.passwordLabel]}>{t('auth.password')}</Text>
+            <View style={styles.passwordWrap}>
               <TextInput
-                value={identifier}
-                onChangeText={setIdentifier}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                placeholder={identifierPlaceholder}
-                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                placeholder={t('auth.passwordPlaceholder')}
+                style={[styles.input, styles.passwordInput]}
                 placeholderTextColor="#94A3B8"
               />
-            </>
-          )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                onPress={() => setShowPassword((prev) => !prev)}
+                style={styles.eyeBtn}>
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={TEXT_MUTED}
+                />
+              </Pressable>
+            </View>
 
-          <Text style={[styles.label, styles.passwordLabel]}>{t('auth.password')}</Text>
-          <View style={styles.passwordWrap}>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              placeholder={t('auth.passwordPlaceholder')}
-              style={[styles.input, styles.passwordInput]}
-              placeholderTextColor="#94A3B8"
-            />
+            <Pressable onPress={handleForgotPassword} style={styles.forgotWrap}>
+              <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
+            </Pressable>
+
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+            {profileGateFailed ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('auth.retryProfileLoad')}
+                onPress={() => void retryProfileAfterGateFailure()}
+                disabled={checkingSession || isSubmitting}
+                style={({ pressed }) => [
+                  styles.retryProfileBtn,
+                  pressed && styles.retryProfileBtnPressed,
+                  (checkingSession || isSubmitting) && styles.retryProfileBtnDisabled,
+                ]}>
+                <Text style={styles.retryProfileBtnText}>{t('auth.retryProfileLoad')}</Text>
+              </Pressable>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-              onPress={() => setShowPassword((prev) => !prev)}
-              style={styles.eyeBtn}>
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={20}
-                color={TEXT_MUTED}
+              accessibilityLabel={t('auth.login')}
+              onPress={handleLogin}
+              disabled={isSubmitting}
+              style={({ pressed }) => [
+                styles.loginButton,
+                pressed && styles.loginButtonPressed,
+                isSubmitting && styles.loginButtonDisabled,
+              ]}>
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
+              )}
+            </Pressable>
+
+            {showSignupLink ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={signupLinkLabel}
+                onPress={() =>
+                  router.replace({
+                    pathname: AppRoutes.signup,
+                    ...(signupRoleParam ? { params: { role: signupRoleParam } } : {}),
+                  })
+                }
+                style={styles.signupWrap}>
+                <Text style={styles.signupText}>{signupLinkLabel}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </KeyboardAwareScrollView>
+
+        {asWelcome ? (
+          <LinearGradient
+            colors={[...colors.brandSurfaceGradient]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.poweredFooter,
+              {
+                paddingBottom: Math.max(insets.bottom, 12),
+                borderTopColor: colors.border,
+              },
+            ]}>
+            <Text style={[styles.poweredLabel, { color: colors.textMuted }]}>
+              {t('roleSelect.poweredBy')}
+            </Text>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Wovello"
+              onPress={() => {
+                void Linking.openURL(WOVELLO_WEBSITE_URL).catch(() => undefined);
+              }}
+              hitSlop={8}>
+              <Image
+                source={wovelloLogo}
+                style={styles.wovelloLogo}
+                resizeMode="contain"
+                accessibilityIgnoresInvertColors
               />
             </Pressable>
-          </View>
-
-          <Pressable onPress={handleForgotPassword} style={styles.forgotWrap}>
-            <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
-          </Pressable>
-
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-          {profileGateFailed ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('auth.retryProfileLoad')}
-              onPress={() => void retryProfileAfterGateFailure()}
-              disabled={checkingSession || isSubmitting}
-              style={({ pressed }) => [
-                styles.retryProfileBtn,
-                pressed && styles.retryProfileBtnPressed,
-                (checkingSession || isSubmitting) && styles.retryProfileBtnDisabled,
-              ]}>
-              <Text style={styles.retryProfileBtnText}>{t('auth.retryProfileLoad')}</Text>
-            </Pressable>
-          ) : null}
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('auth.login')}
-            onPress={handleLogin}
-            disabled={isSubmitting}
-            style={({ pressed }) => [
-              styles.loginButton,
-              pressed && styles.loginButtonPressed,
-              isSubmitting && styles.loginButtonDisabled,
-            ]}>
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
-            )}
-          </Pressable>
-
-          {showSignupLink ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={signupLinkLabel}
-              onPress={() =>
-                router.replace({
-                  pathname: AppRoutes.signup,
-                  params: { role: signupRoleParam },
-                })
-              }
-              style={styles.signupWrap}>
-              <Text style={styles.signupText}>{signupLinkLabel}</Text>
-            </Pressable>
-          ) : null}
+          </LinearGradient>
+        ) : null}
         </View>
-      </KeyboardAwareScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </WebPhoneShell>
   );
 }
 
@@ -573,10 +685,46 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: PAGE_BG,
   },
-  bootLoading: {
+  pageCol: {
     flex: 1,
+  },
+  welcomeHeader: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    paddingTop: 8,
+    alignItems: 'center',
+  },
+  brandTitleTapZone: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  fullLogo: {
+    marginBottom: 8,
+  },
+  brandTagline: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  poweredFooter: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    paddingTop: 14,
+    paddingHorizontal: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  poweredLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  wovelloLogo: {
+    height: 15,
+    width: 73,
   },
   scroll: {
     flex: 1,
@@ -586,10 +734,14 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 32,
   },
+  headingTapZone: {
+    alignSelf: 'flex-start',
+  },
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    gap: 10,
   },
   navRowSpacer: {
     flex: 1,
@@ -631,7 +783,7 @@ const styles = StyleSheet.create({
     padding: 24,
     ...Platform.select({
       ios: {
-        shadowColor: '#123B7A',
+        shadowColor: '#041830',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
@@ -695,7 +847,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   retryProfileBtnPressed: {
     opacity: 0.88,

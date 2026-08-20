@@ -1,5 +1,5 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
-import type { PropsWithChildren } from 'react';
+import { ScrollViewStyleReset } from "expo-router/html";
+import type { PropsWithChildren } from "react";
 
 /**
  * Global web touch/scroll reset — native momentum on mobile browsers.
@@ -97,17 +97,22 @@ export default function Root({ children }: PropsWithChildren) {
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
-        <meta
-          httpEquiv="X-UA-Compatible"
-          content="IE=edge"
-        />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
         />
+        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://www.payhere.lk https://payhere.lk https://sandbox.payhere.lk; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://*.supabase.in wss://*.supabase.in https://*.wovello.com wss://*.wovello.com https://cdn.jsdelivr.net; media-src 'self' blob: data: mediastream:; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob: https://cdn.jsdelivr.net; manifest-src 'self'; upgrade-insecure-requests"
+        />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: globalScrollCss }} />
-        <script dangerouslySetInnerHTML={{ __html: passiveTouchBootstrapScript }} />
+        <script
+          dangerouslySetInnerHTML={{ __html: passiveTouchBootstrapScript }}
+        />
       </head>
       <body>{children}</body>
     </html>

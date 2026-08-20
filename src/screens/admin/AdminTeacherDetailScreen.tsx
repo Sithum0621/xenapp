@@ -18,8 +18,8 @@ import {
 } from '@/src/services/instituteAdminLectureGroupsApi';
 import { useAdminLayout } from '@/src/hooks/useAdminLayout';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     borderWidth: 1,
     borderColor: BRAND_BLUE,
   },

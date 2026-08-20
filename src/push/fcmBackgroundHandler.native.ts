@@ -6,6 +6,7 @@ import messaging from '@react-native-firebase/messaging';
 
 import { displayXenNotification } from '@/src/push/displayXenNotification.native';
 import { ensureAndroidNotificationChannel } from '@/src/push/ensureAndroidNotificationChannel';
+import type { FcmRemoteMessage } from '@/src/push/fcmRemoteMessage';
 
 void ensureAndroidNotificationChannel();
 
@@ -16,7 +17,7 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
   }
 
   try {
-    await displayXenNotification(remoteMessage);
+    await displayXenNotification(remoteMessage as FcmRemoteMessage);
     console.log('[FCM] Background MessagingStyle notification displayed');
   } catch (err) {
     console.warn(

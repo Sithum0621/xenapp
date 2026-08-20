@@ -8,7 +8,7 @@ import ScrollFriendlyPressable from '@/src/components/layout/ScrollFriendlyPress
 import type { TeacherUnifiedGroupRow } from '@/src/services/teacherGroupsApi';
 import { Text } from '@/src/theme/Text';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     maxWidth: '100%',
     alignSelf: 'flex-start',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,

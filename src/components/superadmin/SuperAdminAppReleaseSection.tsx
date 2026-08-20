@@ -25,8 +25,8 @@ import {
 } from '@/src/services/appReleaseApi';
 import { appAlert } from '@/src/utils/appAlert';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
 const PANEL_BG = '#F8FAFC';

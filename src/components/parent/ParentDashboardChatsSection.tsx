@@ -13,7 +13,6 @@ import { NativeFluidFlatList } from '@/src/components/layout/NativeFluidFlatList
 import ScrollFriendlyPressable from '@/src/components/layout/ScrollFriendlyPressable';
 import ChatListRow from '@/src/components/parent/chat/ChatListRow';
 import CommunityChatListRow from '@/src/components/community/CommunityChatListRow';
-import StudentSwitcher from '@/src/components/parent/StudentSwitcher';
 import {
   fetchCommunityChatSummary,
   type CommunityChatPreview,
@@ -22,8 +21,8 @@ import {
   fetchParentGroupChats,
   type GroupChatListItem,
 } from '@/src/services/groupChatApi';
-import type { ParentLinkedStudent } from '@/src/services/parentStudentsApi';
 import { Text } from '@/src/theme/Text';
+import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
 import {
   parentBorder,
@@ -41,22 +40,16 @@ const SURFACE = parentSurface;
 
 export type ParentDashboardChatsSectionProps = {
   isVisible: boolean;
-  students: ParentLinkedStudent[];
   studentsLoading: boolean;
   selectedStudentId: string | null;
-  onSelectStudent: (studentUserId: string) => void;
-  onAddStudent: () => void;
   contentPaddingBottom?: number;
   refreshControl?: React.ReactElement<RefreshControlProps>;
 };
 
 function ParentDashboardChatsSection({
   isVisible,
-  students,
   studentsLoading,
   selectedStudentId,
-  onSelectStudent,
-  onAddStudent,
   contentPaddingBottom = 0,
   refreshControl,
 }: ParentDashboardChatsSectionProps) {
@@ -145,19 +138,9 @@ function ParentDashboardChatsSection({
             noMessagesLabel={t('parentDashboard.chatsNoMessagesYet')}
           />
         ) : null}
-        {students.length > 0 ? (
-          <View style={styles.switcherWrap}>
-            <StudentSwitcher
-              students={students}
-              selectedId={selectedStudentId}
-              onSelect={onSelectStudent}
-              onAdd={onAddStudent}
-            />
-          </View>
-        ) : null}
       </View>
     ),
-    [communityPreview, openCommunityChat, students, selectedStudentId, onSelectStudent, onAddStudent, t],
+    [communityPreview, openCommunityChat, t],
   );
 
   const ListEmpty = useMemo(() => {
@@ -222,14 +205,13 @@ export default memo(ParentDashboardChatsSection);
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: PAGE_CONTENT_TOP,
   },
   listContentEmpty: {
     flexGrow: 1,
   },
   header: { gap: 12, marginBottom: 8 },
-  switcherWrap: { marginBottom: 4 },
   centered: {
     alignItems: 'center',
     paddingVertical: 32,

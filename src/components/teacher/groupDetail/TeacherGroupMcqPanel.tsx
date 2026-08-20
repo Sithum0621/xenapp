@@ -9,8 +9,8 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-
 import { createMcqQuestion, fetchMcqQuestions, type McqQuestionRow } from '@/src/services/teacherGroupWorkspaceApi';
 import type { TeacherGroupRouteContext } from '@/src/utils/teacherGroupRouteParams';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 const TEXT_MUTED = '#64748B';
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   radioRowSelected: {
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   radioRowPressed: { opacity: 0.92 },
   radioLabel: {

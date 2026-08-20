@@ -30,8 +30,8 @@ import {
 import { formatScheduleClockTime } from '@/src/services/instituteAdminDashboardApi';
 import { mapScheduleDbError } from '@/src/utils/scheduleTimeValidation';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
   },
   dayChipOn: {
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   dayChipPressed: { opacity: 0.9 },
   dayChipText: { fontSize: 13, fontWeight: '600', color: BRAND_BLUE_DARK },

@@ -31,6 +31,7 @@ import { useSubscriptionStatus } from '@/src/components/subscription/useSubscrip
 import SuperadminDevDashboardSwitcher from '@/src/components/SuperadminDevDashboardSwitcher';
 import { signOutAndReturnToLogin } from '@/src/navigation/signOutAndReturnToLogin';
 import { getParentDashboardTab } from '@/src/navigation/parentDashboardTabStore';
+import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { useActiveGamesScheduleExam } from '@/src/contexts/ActiveGamesScheduleExamContext';
 import {
   fetchParentStudents,
@@ -43,6 +44,8 @@ import {
   languageLabelKeyForCode,
   normalizeAppLanguage,
 } from '@/src/screens/settings/SettingsLanguageScreen';
+import { useAppThemeColors } from '@/src/context/ThemePreferenceContext';
+import { routeForPaymentPlan } from '@/src/services/subscription';
 import {
   parentBorder,
   parentBrandBlue,
@@ -51,6 +54,7 @@ import {
   parentSurface,
   parentSurfaceAlt,
 } from '@/src/theme/parentDashboardPalette';
+import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
 const BRAND_BLUE_DARK = parentBrandBlueDark;
 const BRAND_BLUE = parentBrandBlue;
@@ -64,6 +68,7 @@ const PARENT_ROLE = 'parent_student';
 export default function ParentDashboardHome() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  const themeColors = useAppThemeColors();
   const currentLanguageLabel = t(
     languageLabelKeyForCode(normalizeAppLanguage(i18n.language)),
   );
@@ -85,6 +90,7 @@ export default function ParentDashboardHome() {
   const homeWasShown = useRef(false);
   const [skipHomeEntrance, setSkipHomeEntrance] = useState(false);
 
+  const [freeBannerDismissed, setFreeBannerDismissed] = useState(false);
   const subscription = useSubscriptionStatus();
   const {
     activeExam,
@@ -93,8 +99,11 @@ export default function ParentDashboardHome() {
     pendingDashboardTab,
     clearPendingDashboardTab,
   } = useActiveGamesScheduleExam();
-  const subscriptionExpired =
-    !subscription.loading && !subscription.bypass && !subscription.isActive;
+  const showFreeBanner =
+    !subscription.loading &&
+    !subscription.bypass &&
+    subscription.isFree &&
+    !freeBannerDismissed;
   const showNextPaymentBar =
     !subscription.loading &&
     subscription.showCountdown &&
@@ -237,9 +246,9 @@ export default function ParentDashboardHome() {
 
   const isHomeActive = active === 'home';
   const headerGreetingName = useMemo(() => {
-    if (!isHomeActive || !selectedStudent) return null;
+    if (!selectedStudent) return null;
     return firstNameForGreeting(selectedStudent.fullName, selectedStudent.firstName);
-  }, [isHomeActive, selectedStudent]);
+  }, [selectedStudent]);
   const showExamBlocker = Boolean(activeExam) && active !== 'games';
   const examBlockerBottom = parentBottomDockReserve(showNextPaymentBar, insets.bottom);
 
@@ -360,6 +369,44 @@ export default function ParentDashboardHome() {
 
         <ScrollFriendlyPressable
           accessibilityRole="button"
+          onPress={() => router.push(appHref(AppRoutes.policies))}
+          style={styles.menuItem}
+          innerStyle={styles.menuItemInner}>
+          <View style={styles.menuItemIcon}>
+            <Ionicons name="document-text-outline" size={18} color={BRAND_BLUE_DARK} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.menuItemTitle}>{t('parentDashboard.settingsPolicies')}</Text>
+            <Text style={styles.menuItemSub}>{t('parentDashboard.settingsPoliciesHint')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+        </ScrollFriendlyPressable>
+
+        <ScrollFriendlyPressable
+          accessibilityRole="button"
+          onPress={() => router.push(routeForPaymentPlan(PARENT_ROLE))}
+          style={styles.menuItem}
+          innerStyle={styles.menuItemInner}>
+          <View style={styles.menuItemIcon}>
+            <Ionicons name="diamond-outline" size={18} color={BRAND_BLUE_DARK} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.menuItemTitle}>{t('parentDashboard.settingsPackage')}</Text>
+            <Text style={styles.menuItemSub} numberOfLines={1}>
+              {subscription.isFree
+                ? t('package.tierFree')
+                : subscription.tier === 'paid'
+                  ? t('package.tierPaid')
+                  : subscription.tier === 'trial'
+                    ? t('package.tierTrial')
+                    : t('package.tierFree')}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+        </ScrollFriendlyPressable>
+
+        <ScrollFriendlyPressable
+          accessibilityRole="button"
           onPress={() => router.push('/fcm-test')}
           style={styles.menuItem}
           innerStyle={styles.menuItemInner}>
@@ -393,13 +440,13 @@ export default function ParentDashboardHome() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: themeColors.page }]} edges={['top', 'left', 'right', 'bottom']}>
       <SuperadminDevDashboardSwitcher />
 
       <BrandHeader
         helloPrefix={headerGreetingName ? t('parentDashboard.helloPrefix') : undefined}
         userName={headerGreetingName}
-        trailing={isHomeActive ? <ParentHomeGreetingBar isVisible /> : undefined}
+        trailing={<ParentHomeGreetingBar isVisible />}
       />
 
       <ParentStudentTempPasswordPrompt marginHorizontal={16} marginBottom={isHomeActive ? 8 : 12} />
@@ -425,13 +472,10 @@ export default function ParentDashboardHome() {
         {active === 'classes' ? (
           <ParentDashboardClassesSection
             isVisible
-            students={students}
             studentsLoading={studentsLoading}
             selectedStudentId={selectedStudentId}
             selectedStudent={selectedStudent}
             classesRefreshNonce={classesRefreshNonce}
-            onSelectStudent={handleSelectStudent}
-            onAddStudent={handleAddStudent}
             contentPaddingBottom={scrollBottomPadding}
             refreshControl={
               <RefreshControl
@@ -447,11 +491,8 @@ export default function ParentDashboardHome() {
         {active === 'games' ? (
           <ParentDashboardGamesSection
             isVisible
-            students={students}
             studentsLoading={studentsLoading}
             selectedStudentId={selectedStudentId}
-            onSelectStudent={handleSelectStudent}
-            onAddStudent={handleAddStudent}
             contentPaddingBottom={scrollBottomPadding}
           />
         ) : null}
@@ -459,11 +500,8 @@ export default function ParentDashboardHome() {
         {active === 'chats' ? (
           <ParentDashboardChatsSection
             isVisible
-            students={students}
             studentsLoading={studentsLoading}
             selectedStudentId={selectedStudentId}
-            onSelectStudent={handleSelectStudent}
-            onAddStudent={handleAddStudent}
             contentPaddingBottom={scrollBottomPadding}
           />
         ) : null}
@@ -505,7 +543,12 @@ export default function ParentDashboardHome() {
         </View>
       ) : null}
 
-      {subscriptionExpired ? <SubscriptionExpiredOverlay role={PARENT_ROLE} /> : null}
+      {showFreeBanner ? (
+        <SubscriptionExpiredOverlay
+          role={PARENT_ROLE}
+          onDismiss={() => setFreeBannerDismissed(true)}
+        />
+      ) : null}
 
       <ChangePasswordModal
         visible={changePwOpen}
@@ -585,7 +628,7 @@ const styles = StyleSheet.create({
     zIndex: 15,
   },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 12 },
+  scrollContent: { paddingHorizontal: PAGE_EDGE_INSET, paddingTop: PAGE_CONTENT_TOP },
   sectionBody: { gap: 14 },
   sectionTitle: {
     fontSize: 22,

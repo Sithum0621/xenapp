@@ -18,6 +18,8 @@ import SuperadminDevDashboardSwitcher from '@/src/components/SuperadminDevDashbo
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { signOutAndReturnToLogin } from '@/src/navigation/signOutAndReturnToLogin';
 import { supabase } from '@/src/services/supabaseClient';
+import { useAppThemeColors } from '@/src/context/ThemePreferenceContext';
+import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
 function firstNameFromFullName(fullName: string): string {
   const trimmed = fullName.trim();
@@ -27,8 +29,8 @@ function firstNameFromFullName(fullName: string): string {
 
 type DashboardSection = 'overview' | 'classes' | 'chats' | 'attendance' | 'settings';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const COMPACT_BREAKPOINT = 900;
@@ -36,6 +38,7 @@ const COMPACT_BREAKPOINT = 900;
 export default function TeacherDashboardHome() {
   const router = useRouter();
   const { t } = useTranslation();
+  const themeColors = useAppThemeColors();
 
   const NAV_ITEMS: { key: DashboardSection; label: string; icon: keyof typeof Ionicons.glyphMap }[] =
     useMemo(
@@ -181,6 +184,20 @@ export default function TeacherDashboardHome() {
 
             <Pressable
               accessibilityRole="button"
+              onPress={() => router.push(appHref(AppRoutes.policies))}
+              style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}>
+              <View style={styles.menuItemIcon}>
+                <Ionicons name="document-text-outline" size={18} color={BRAND_BLUE_DARK} />
+              </View>
+              <View style={styles.menuItemTextWrap}>
+                <Text style={styles.menuItemTitle}>{t('policies.settingsEntry')}</Text>
+                <Text style={styles.menuItemSub}>{t('policies.settingsEntryHint')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Log out"
               disabled={signingOut}
               onPress={openLogoutConfirm}
@@ -285,7 +302,7 @@ export default function TeacherDashboardHome() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: themeColors.page }]} edges={['top', 'left', 'right', 'bottom']}>
       <SuperadminDevDashboardSwitcher />
       <BrandHeader
         helloPrefix={t('teacherDashboard.overview.helloPrefix')}
@@ -449,12 +466,12 @@ const styles = StyleSheet.create({
   },
   flex1: { flex: 1 },
   mainContentHeader: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: PAGE_CONTENT_TOP,
   },
   mainContent: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: PAGE_EDGE_INSET,
+    paddingTop: PAGE_CONTENT_TOP,
     paddingBottom: 90,
   },
   headerRow: {
@@ -506,7 +523,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -696,7 +713,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   bottomItemSelected: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   bottomItemPressed: {
     opacity: 0.8,

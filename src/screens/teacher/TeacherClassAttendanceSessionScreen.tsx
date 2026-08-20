@@ -3,10 +3,11 @@ import { appAlert } from '@/src/utils/appAlert';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, TextInput as RNTextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import BrandHeader from '@/src/components/parent/BrandHeader';
 import TeacherLastSessionAttendanceCard from '@/src/components/teacher/TeacherLastSessionAttendanceCard';
 import TeacherStudentQrScanner from '@/src/components/teacher/groupDetail/TeacherStudentQrScanner';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
@@ -22,13 +23,13 @@ import { formatScheduleClockTime } from '@/src/services/instituteAdminDashboardA
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
 import { FontFamily } from '@/src/theme/fonts';
-import { formatXenStudentIdInput, parseXenStudentId, XEN_STUDENT_ID_PREFIX } from '@/src/utils/loginIdentifier';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
-import { parseXenIdFromScan, sanitizeScanInput } from '@/src/utils/xenQrPayload';
+import { parseSriLankaMobile, sanitizeSriLankaMobileInput } from '@/src/utils/sriLankaMobile';
+import { attendanceScanIdentifier, sanitizeScanInput } from '@/src/utils/xenQrPayload';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE_SOFT = '#EFF6FF';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE_SOFT = '#E3F2FD';
 const BRAND_BLUE_BORDER = '#BFDBFE';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
@@ -56,16 +57,16 @@ export default function TeacherClassAttendanceSessionScreen() {
   const startTime = String(params.startTime ?? '');
   const endTime = String(params.endTime ?? '');
 
-  const scanInputRef = useRef<{ focus: () => void } | null>(null);
+  const scanInputRef = useRef<RNTextInput>(null);
   const [scanSession, setScanSession] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [qrScanInput, setQrScanInput] = useState('');
-  const [xenInput, setXenInput] = useState(XEN_STUDENT_ID_PREFIX);
+  const [mobileInput, setMobileInput] = useState('');
   const [lastSessionLoading, setLastSessionLoading] = useState(true);
   const [lastSessionError, setLastSessionError] = useState<string | null>(null);
   const [lastSession, setLastSession] = useState<LastSessionAttendance | null>(null);
 
-  const xenIdValid = useMemo(() => parseXenStudentId(xenInput) !== null, [xenInput]);
+  const mobileValid = useMemo(() => parseSriLankaMobile(mobileInput) !== null, [mobileInput]);
 
   const timeLabel = useMemo(() => {
     if (!startTime || !endTime) return '';
@@ -106,7 +107,7 @@ export default function TeacherClassAttendanceSessionScreen() {
 
   const resetInputs = useCallback(() => {
     setQrScanInput('');
-    setXenInput(XEN_STUDENT_ID_PREFIX);
+    setMobileInput('');
     setScanSession((n) => n + 1);
   }, []);
 
@@ -143,7 +144,9 @@ export default function TeacherClassAttendanceSessionScreen() {
                   ? 'errorNotEnrolled'
                   : code === 'invalid_student_id'
                     ? 'errorInvalidStudentId'
-                    : 'errorGeneric';
+                    : code === 'card_unclaimed'
+                      ? 'errorCardUnclaimed'
+                      : 'errorGeneric';
       appAlert(am('errorTitle'), detail?.trim() || am(key), [
         { text: am('scanAgain'), onPress: resetInputs },
       ]);
@@ -159,14 +162,14 @@ export default function TeacherClassAttendanceSessionScreen() {
       }
 
       setSubmitting(true);
-      const studentUserId = await resolveStudentUserIdForAttendance(raw);
+      const { studentUserId, errorCode } = await resolveStudentUserIdForAttendance(raw);
       if (!studentUserId) {
         setSubmitting(false);
-        showError('invalid_student_id');
+        showError(errorCode);
         return;
       }
 
-      const { result, errorCode, error } = await markAttendanceByScan(studentUserId, {
+      const { result, errorCode: markCode, error } = await markAttendanceByScan(studentUserId, {
         groupId,
         groupSource,
         scheduleId,
@@ -174,12 +177,12 @@ export default function TeacherClassAttendanceSessionScreen() {
       setSubmitting(false);
 
       if (error || !result) {
-        showError(errorCode, error);
+        showError(markCode, error);
         return;
       }
 
       setQrScanInput('');
-      setXenInput(XEN_STUDENT_ID_PREFIX);
+      setMobileInput('');
       finishSuccess(result.student_name, result.marked_at, result.already_present);
     },
     [finishSuccess, groupId, groupSource, scheduleId, showError],
@@ -195,31 +198,25 @@ export default function TeacherClassAttendanceSessionScreen() {
   const handleQrScanChange = (text: string) => {
     const cleaned = sanitizeScanInput(text);
     setQrScanInput(cleaned);
-    if (!submitting && parseXenIdFromScan(cleaned)) {
-      void markStudent(cleaned);
+    const identifier = attendanceScanIdentifier(cleaned);
+    if (!submitting && identifier) {
+      void markStudent(identifier);
     }
   };
 
-  const handleXenSubmit = () => {
-    const xenId = parseXenStudentId(xenInput);
-    if (!xenId) {
+  const handleMobileSubmit = () => {
+    const phone = parseSriLankaMobile(mobileInput);
+    if (!phone) {
       showError('invalid_student_id');
       return;
     }
-    void markStudent(xenId);
-  };
-
-  const handleXenChange = (text: string) => {
-    if (text.length < XEN_STUDENT_ID_PREFIX.length) {
-      setXenInput(XEN_STUDENT_ID_PREFIX);
-      return;
-    }
-    setXenInput(formatXenStudentIdInput(text));
+    void markStudent(phone);
   };
 
   if (!groupId || !scheduleId) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <BrandHeader />
         <View style={styles.missingWrap}>
           <Text style={styles.missingText}>{am('sessionMissingParams')}</Text>
           <Pressable
@@ -234,6 +231,7 @@ export default function TeacherClassAttendanceSessionScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <BrandHeader />
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -286,7 +284,8 @@ export default function TeacherClassAttendanceSessionScreen() {
               editable={!submitting}
               style={styles.scanInput}
               onSubmitEditing={() => {
-                if (parseXenIdFromScan(qrScanInput)) void markStudent(qrScanInput);
+                const identifier = attendanceScanIdentifier(qrScanInput);
+                if (identifier) void markStudent(identifier);
               }}
               returnKeyType="done"
             />
@@ -298,7 +297,12 @@ export default function TeacherClassAttendanceSessionScreen() {
               <Text style={styles.loadingText}>{am('marking')}</Text>
             </View>
           ) : (
-            <TeacherStudentQrScanner compact key={scanSession} onParsedId={handleParsedId} />
+            <TeacherStudentQrScanner
+              compact
+              key={scanSession}
+              onParsedId={handleParsedId}
+              onParsedIssuedCard={(token) => void markStudent(token)}
+            />
           )}
         </View>
 
@@ -311,7 +315,7 @@ export default function TeacherClassAttendanceSessionScreen() {
         <View style={[styles.sectionCard, styles.fallbackCard]}>
           <View style={styles.sectionHeader}>
             <View style={[styles.sectionIconWrap, styles.fallbackIconWrap]}>
-              <Ionicons name="id-card-outline" size={18} color="#475569" />
+              <Ionicons name="call-outline" size={18} color="#475569" />
             </View>
             <View style={styles.sectionHeaderText}>
               <Text style={styles.sectionTitle}>{am('sessionXenTitle')}</Text>
@@ -320,24 +324,25 @@ export default function TeacherClassAttendanceSessionScreen() {
           </View>
 
           <TextInput
-            value={xenInput}
-            onChangeText={handleXenChange}
+            value={mobileInput}
+            onChangeText={(text) => setMobileInput(sanitizeSriLankaMobileInput(text))}
             placeholder={am('sessionXenPlaceholder')}
             placeholderTextColor={TEXT_MUTED}
-            autoCapitalize="characters"
+            keyboardType="phone-pad"
+            autoCapitalize="none"
             autoCorrect={false}
             editable={!submitting}
             style={styles.xenInput}
-            onSubmitEditing={handleXenSubmit}
+            onSubmitEditing={handleMobileSubmit}
             returnKeyType="done"
           />
           <Pressable
-            disabled={submitting || !xenIdValid}
-            onPress={handleXenSubmit}
+            disabled={submitting || !mobileValid}
+            onPress={handleMobileSubmit}
             style={({ pressed }) => [
               styles.secondaryBtn,
-              pressed && !submitting && xenIdValid && styles.secondaryBtnPressed,
-              (submitting || !xenIdValid) && styles.secondaryBtnDisabled,
+              pressed && !submitting && mobileValid && styles.secondaryBtnPressed,
+              (submitting || !mobileValid) && styles.secondaryBtnDisabled,
             ]}>
             <Text style={styles.secondaryBtnText}>{am('sessionMarkById')}</Text>
           </Pressable>
@@ -504,7 +509,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 17,
     fontFamily: FontFamily.bold,
-    letterSpacing: 0.5,
     backgroundColor: SURFACE,
     color: BRAND_BLUE_DARK,
   },

@@ -14,8 +14,8 @@ import {
   type QuizSetupDraft,
 } from '@/src/utils/gamesScheduleMcq';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const PANEL_BG = '#F8FAFC';
 const SUBTLE_BORDER = '#E2E8F0';

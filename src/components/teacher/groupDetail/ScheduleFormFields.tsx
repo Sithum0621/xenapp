@@ -5,8 +5,8 @@ import { TextInput } from '@/src/theme/TextInput';
 import type { AmPm, ScheduleDateParts, ScheduleTime12Parts } from '@/src/utils/scheduleFormParts';
 import { sanitizeNumericInput } from '@/src/utils/scheduleFormParts';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 const TEXT_MUTED = '#64748B';
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   },
   ampmChipSelected: {
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   ampmChipPressed: { opacity: 0.88 },
   ampmChipText: { fontSize: 13, fontWeight: '800', color: TEXT_MUTED },

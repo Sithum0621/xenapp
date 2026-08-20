@@ -10,8 +10,8 @@ import type {
   SuperadminDashboardStatKey,
 } from '@/src/services/superadminDashboardApi';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const SUBTLE_BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
@@ -37,8 +37,8 @@ export const GROWTH_SERIES_META: {
 }[] = [
   {
     key: 'teachers',
-    color: '#123B7A',
-    bg: '#EFF6FF',
+    color: '#041830',
+    bg: '#E3F2FD',
     labelKey: 'superAdmin.dashboardStatTeachers',
   },
   {

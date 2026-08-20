@@ -13,6 +13,9 @@ export default function TeacherDashboardLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="wallet" />
       <Stack.Screen name="my-timetable" />
+      <Stack.Screen name="class-cards" />
+      <Stack.Screen name="link-student-card" />
+      <Stack.Screen name="sms-credit" />
       <Stack.Screen name="income-breakdown" />
       <Stack.Screen name="payments" />
       <Stack.Screen name="collect-payment" />

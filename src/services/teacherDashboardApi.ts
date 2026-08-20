@@ -8,6 +8,7 @@ import {
   SessionCacheKeys,
   sessionCacheGetOrFetch,
 } from '@/src/services/sessionDataCache';
+import { loadTeacherSmsAccount } from '@/src/services/teacherSmsAccountStorage';
 import { fetchTeacherWalletOverview } from '@/src/services/teacherWalletApi';
 export type TeacherDashboardClassRow = {
   id: string;
@@ -37,6 +38,8 @@ export type TeacherDashboardOverview = {
   duePaymentCents: number;
   /** Package activation fees owed to additional teachers for the current billing month. */
   amountToPayCents: number;
+  /** Remaining SMS credits for teacher notifications (50 starter credits). */
+  smsCreditBalance: number;
 };
 
 function monthStartIso(): string {
@@ -328,12 +331,13 @@ export async function fetchTeacherDashboardOverview(): Promise<TeacherDashboardO
   const instituteIds = groupsRes.rows.filter((g) => g.source === 'institute').map((g) => g.id);
   const personalIds = groupsRes.rows.filter((g) => g.source === 'personal').map((g) => g.id);
 
-  const [instituteCounts, personalCounts, payRes, packageRes, walletRes] = await Promise.all([
+  const [instituteCounts, personalCounts, payRes, packageRes, walletRes, smsRes] = await Promise.all([
     countStudentsByInstituteGroup(instituteIds),
     countStudentsByPersonalGroup(personalIds),
     sumPaymentsForMonth(instituteIds, personalIds, billingMonth),
     sumTeacherPackageAmountToPay(user.id, instituteIds, personalIds, billingMonth),
     fetchTeacherWalletOverview(0),
+    loadTeacherSmsAccount(),
   ]);
 
   if (payRes.error) {
@@ -366,6 +370,7 @@ export async function fetchTeacherDashboardOverview(): Promise<TeacherDashboardO
       teacherWalletBalanceCents,
       duePaymentCents: payRes.pendingCents,
       amountToPayCents: payRes.platformFeeTotalCents + packageRes.totalCents,
+      smsCreditBalance: smsRes.ok && smsRes.account ? smsRes.account.creditBalance : 0,
     },
     error: null,
     partialWarning: groupsRes.partialWarning,

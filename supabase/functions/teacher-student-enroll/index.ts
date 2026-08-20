@@ -5,44 +5,11 @@
  * Deploy: supabase functions deploy teacher-student-enroll --no-verify-jwt
  * (OPTIONS preflight has no JWT; gateway JWT verify must be off. Auth is enforced via Bearer + getUser().)
  */
+import { corsHeadersFor, jsonResponse } from '../_shared/cors.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
-const DEFAULT_ALLOWED_ORIGINS = new Set([
-  'http://localhost:8081',
-  'http://127.0.0.1:8081',
-  'http://localhost:19006',
-  'http://127.0.0.1:19006',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-]);
-
-function allowedOrigins(): Set<string> {
-  const extra =
-    Deno.env.get('TEACHER_ENROLL_ALLOWED_ORIGINS')?.split(',').map((s) => s.trim()).filter(Boolean) ??
-    [];
-  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...extra]);
-}
-
-/** CORS for browser dev (Expo web) and production; reflects Origin when allowlisted, else *. */
-function corsHeadersFor(req: Request): Headers {
-  const origin = req.headers.get('Origin');
-  const allow = allowedOrigins();
-  const allowOrigin = origin && allow.has(origin) ? origin : '*';
-  const h = new Headers();
-  h.set('Access-Control-Allow-Origin', allowOrigin);
-  h.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
-  h.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  h.set('Access-Control-Max-Age', '86400');
-  if (allowOrigin !== '*') {
-    h.set('Vary', 'Origin');
-  }
-  return h;
-}
-
 function json(body: Record<string, unknown>, req: Request, status = 200) {
-  const headers = corsHeadersFor(req);
-  headers.set('Content-Type', 'application/json');
-  return new Response(JSON.stringify(body), { status, headers });
+  return jsonResponse(req, body, status);
 }
 
 const UUID_RE =
@@ -58,6 +25,19 @@ const SYNTHETIC_PHONE_EMAIL_DOMAIN = 'phone.wovello.app';
 function syntheticEmailFromPhoneE164(phoneE164: string): string {
   const digits = phoneE164.replace(/\D/g, '');
   return `wovello-${digits}@${SYNTHETIC_PHONE_EMAIL_DOMAIN}`;
+}
+
+/** Unique auth email so multiple students may share one mobile number. */
+function syntheticEmailForSharedMobileStudent(): string {
+  const id = crypto.randomUUID().replace(/-/g, '');
+  return `wovello-s-${id}@${SYNTHETIC_PHONE_EMAIL_DOMAIN}`;
+}
+
+function randomTempPassword(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]!).join('');
 }
 
 function parseUsername(raw: string): { kind: 'email'; email: string } | { kind: 'phone'; phone: string } | null {
@@ -152,7 +132,8 @@ async function enrollExistingStudent(
     });
     if (error) {
       if (error.code === '23505') return { ok: false, error: 'already_enrolled', code: error.code };
-      return { ok: false, error: error.message };
+      console.error('personal roster insert:', error.message);
+      return { ok: false, error: 'enroll_failed', code: error.code };
     }
     return { ok: true };
   }
@@ -182,6 +163,71 @@ async function enrollExistingStudent(
   return { ok: true };
 }
 
+async function lookupStudentByMobile(
+  admin: ReturnType<typeof createClient>,
+  mobileE164: string,
+): Promise<string | null> {
+  const { data, error } = await admin.rpc('lookup_parent_student_id_by_mobile', {
+    p_mobile: mobileE164,
+  });
+  if (error || typeof data !== 'string' || !data) return null;
+  return data;
+}
+
+async function upsertStudentMobile(
+  admin: ReturnType<typeof createClient>,
+  studentUserId: string,
+  mobileE164: string,
+): Promise<void> {
+  const { error } = await admin.from('profiles_contact').upsert(
+    { id: studentUserId, mobile_number: mobileE164 },
+    { onConflict: 'id' },
+  );
+  if (error) {
+    await admin
+      .from('profiles_contact')
+      .update({ mobile_number: mobileE164 })
+      .eq('id', studentUserId);
+  }
+}
+
+async function bindIssuedClassCard(
+  admin: ReturnType<typeof createClient>,
+  token: string,
+  teacherId: string,
+  studentUserId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: existing } = await admin
+    .from('issued_class_cards')
+    .select('teacher_user_id, student_user_id')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (existing?.teacher_user_id && existing.teacher_user_id !== teacherId) {
+    return { ok: false, error: 'card_owned_by_other' };
+  }
+  if (
+    typeof existing?.student_user_id === 'string' &&
+    existing.student_user_id &&
+    existing.student_user_id !== studentUserId
+  ) {
+    return { ok: false, error: 'card_already_linked' };
+  }
+
+  const nowIso = new Date().toISOString();
+  const { error } = await admin.from('issued_class_cards').upsert(
+    {
+      token,
+      teacher_user_id: teacherId,
+      student_user_id: studentUserId,
+      claimed_at: nowIso,
+    },
+    { onConflict: 'token' },
+  );
+  if (error) return { ok: false, error: 'card_bind_failed' };
+  return { ok: true };
+}
+
 type StudentIdent = { kind: 'email'; email: string } | { kind: 'phone'; phone: string };
 
 async function lookupAuthUserIdByEmail(
@@ -198,22 +244,18 @@ async function lookupAuthUserIdByEmail(
 async function waitForStudentProfile(
   admin: ReturnType<typeof createClient>,
   studentUserId: string,
-  maxAttempts = 10,
-): Promise<{ role: string; xen_student_id: string | null } | null> {
+  maxAttempts = 25,
+): Promise<{ role: string } | null> {
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const { data, error } = await admin
       .from('profiles')
-      .select('role, xen_student_id')
+      .select('role')
       .eq('id', studentUserId)
       .maybeSingle();
     if (!error && data) {
-      return {
-        role: String(data.role ?? ''),
-        xen_student_id:
-          typeof data.xen_student_id === 'string' ? data.xen_student_id : null,
-      };
+      return { role: String(data.role ?? '') };
     }
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    await new Promise((resolve) => setTimeout(resolve, 150));
   }
   return null;
 }
@@ -232,7 +274,7 @@ async function finalizeRegisteredStudent(
     groupId: string;
   },
 ): Promise<
-  | { ok: true; xenStudentId: string }
+  | { ok: true }
   | { ok: false; error: string; detail?: string; status: number }
 > {
   const { firstName, lastName, fullName, address, password, ident, groupSource, groupId } = opts;
@@ -242,7 +284,15 @@ async function finalizeRegisteredStudent(
     return { ok: false, error: 'student_not_found', status: 404 };
   }
   if (roleRow.role !== 'parent_student') {
-    return { ok: false, error: 'username_exists', status: 409 };
+    // Teacher-invited creates should always land as parent_student; repair if trigger raced.
+    const { error: roleFixErr } = await admin
+      .from('profiles')
+      .update({ role: 'parent_student', is_teacher_invited: true })
+      .eq('id', studentUserId);
+    if (roleFixErr) {
+      return { ok: false, error: 'username_exists', status: 409 };
+    }
+    roleRow.role = 'parent_student';
   }
 
   const { error: pwErr } = await admin.auth.admin.updateUserById(studentUserId, {
@@ -275,16 +325,14 @@ async function finalizeRegisteredStudent(
   });
 
   if (profileRpcErr) {
+    console.error('teacher_upsert_student_profile:', profileRpcErr.message);
     const { error: legacyUpErr } = await admin
       .from('profiles')
       .update({
         first_name: firstName,
         last_name: lastName,
         full_name: fullName,
-        address: address || null,
-        mobile_number: ident.kind === 'phone' ? ident.phone : null,
-        password_created_at: nowIso,
-        temp_password_expires_at: tempExpiresIso,
+        is_teacher_invited: true,
       })
       .eq('id', studentUserId);
 
@@ -296,6 +344,22 @@ async function finalizeRegisteredStudent(
         status: 500,
       };
     }
+
+    if (ident.kind === 'phone') {
+      await upsertStudentMobile(admin, studentUserId, ident.phone);
+    }
+    await admin.from('profiles_contact').upsert(
+      {
+        id: studentUserId,
+        address: address || null,
+        password_created_at: nowIso,
+        temp_password_expires_at: tempExpiresIso,
+        ...(ident.kind === 'phone' ? { mobile_number: ident.phone } : {}),
+      },
+      { onConflict: 'id' },
+    );
+  } else {
+    await admin.from('profiles').update({ is_teacher_invited: true }).eq('id', studentUserId);
   }
 
   const enrollResult = await enrollExistingStudent(
@@ -314,37 +378,8 @@ async function finalizeRegisteredStudent(
     };
   }
 
-  const { data: xenStudentId, error: xenErr } = await admin.rpc('allocate_xen_student_id', {
-    p_student_user_id: studentUserId,
-  });
-
-  if (!xenErr && typeof xenStudentId === 'string' && xenStudentId.trim()) {
-    return { ok: true, xenStudentId: xenStudentId.trim() };
-  }
-
-  const existing =
-    typeof roleRow.xen_student_id === 'string' ? roleRow.xen_student_id.trim() : '';
-  if (existing) {
-    return { ok: true, xenStudentId: existing };
-  }
-
-  const { data: refreshed } = await admin
-    .from('profiles')
-    .select('xen_student_id')
-    .eq('id', studentUserId)
-    .maybeSingle();
-  const refreshedXen =
-    typeof refreshed?.xen_student_id === 'string' ? refreshed.xen_student_id.trim() : '';
-  if (refreshedXen) {
-    return { ok: true, xenStudentId: refreshedXen };
-  }
-
-  return {
-    ok: false,
-    error: 'xen_id_failed',
-    detail: xenErr?.message ?? 'missing xen_student_id',
-    status: 500,
-  };
+  // Mobile number is the login identity — no XEN ID allocation.
+  return { ok: true };
 }
 
 Deno.serve(async (req) => {
@@ -398,6 +433,80 @@ Deno.serve(async (req) => {
     const groupSource = typeof body.group_source === 'string' ? body.group_source.trim() : '';
     const groupId = typeof body.group_id === 'string' ? body.group_id.trim() : '';
 
+    if (mode === 'link_by_mobile') {
+      const mobileRaw = typeof body.mobile_number === 'string' ? body.mobile_number.trim() : '';
+      const ident = parseUsername(mobileRaw);
+      if (!ident || ident.kind !== 'phone') {
+        return json({ error: 'invalid_username' }, req, 400);
+      }
+
+      const cardToken =
+        typeof body.card_token === 'string' && /^mtc1_[A-Za-z0-9]{20}$/.test(body.card_token.trim())
+          ? body.card_token.trim()
+          : '';
+      if (!cardToken) {
+        return json({ error: 'card_required' }, req, 400);
+      }
+      const scannedId =
+        typeof body.student_user_id === 'string' && UUID_RE.test(body.student_user_id.trim())
+          ? body.student_user_id.trim()
+          : '';
+
+      let studentUserId: string | null = scannedId || null;
+      if (studentUserId) {
+        const { data: scannedProfile } = await admin
+          .from('profiles')
+          .select('id, role')
+          .eq('id', studentUserId)
+          .maybeSingle();
+        if (!scannedProfile || scannedProfile.role !== 'parent_student') {
+          studentUserId = null;
+        }
+      }
+      if (!studentUserId) {
+        studentUserId = await lookupStudentByMobile(admin, ident.phone);
+      }
+      if (!studentUserId) {
+        return json({ error: 'student_not_found' }, req, 404);
+      }
+
+      await upsertStudentMobile(admin, studentUserId, ident.phone);
+
+      if (UUID_RE.test(groupId) && (groupSource === 'personal' || groupSource === 'institute')) {
+        const gate = await assertTeacherCanManageGroup(
+          admin,
+          user.id,
+          groupSource as GroupSource,
+          groupId,
+        );
+        if (!gate.ok) {
+          return json({ error: gate.error }, req, gate.status);
+        }
+        const r = await enrollExistingStudent(
+          admin,
+          groupSource as GroupSource,
+          groupId,
+          studentUserId,
+          '',
+        );
+        if (!r.ok && r.error !== 'already_enrolled') {
+          return json({ error: r.error }, req, 400);
+        }
+      }
+
+      if (cardToken) {
+        const bound = await bindIssuedClassCard(admin, cardToken, user.id, studentUserId);
+        if (!bound.ok) {
+          return json({ error: bound.error, student_user_id: studentUserId }, req, 409);
+        }
+      }
+
+      return json(
+        { ok: true, student_user_id: studentUserId, mobile_number: ident.phone },
+        req,
+      );
+    }
+
     if (!UUID_RE.test(groupId)) {
       return json({ error: 'invalid_group_id' }, req, 400);
     }
@@ -423,6 +532,77 @@ Deno.serve(async (req) => {
         return json({ error: r.error }, req, status);
       }
       return json({ ok: true, student_user_id: sid }, req);
+    }
+
+    if (mode === 'add_by_name_mobile') {
+      const fullNameRaw = typeof body.full_name === 'string' ? body.full_name.trim() : '';
+      const mobileRaw = typeof body.mobile_number === 'string' ? body.mobile_number.trim() : '';
+      if (!fullNameRaw) {
+        return json({ error: 'validation_failed' }, req, 400);
+      }
+      const ident = parseUsername(mobileRaw);
+      if (!ident || ident.kind !== 'phone') {
+        return json({ error: 'invalid_username' }, req, 400);
+      }
+
+      const nameParts = fullNameRaw.split(/\s+/).filter(Boolean);
+      const firstName = nameParts[0] ?? fullNameRaw;
+      const lastName = nameParts.slice(1).join(' ') || '-';
+      const fullName = `${firstName} ${lastName}`.trim();
+
+      // Always create a new student row. Same mobile may be shared by many students.
+      // Login credentials are not shown — card / mobile linking is used later.
+      const password = randomTempPassword();
+      const authEmail = syntheticEmailForSharedMobileStudent();
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email: authEmail,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
+          role: 'parent_student',
+          teacher_invited: 'true',
+          login_phone: ident.phone,
+          synthetic_email: 'true',
+          shared_mobile_student: 'true',
+        },
+      });
+
+      let studentUserId: string | null = created?.user?.id ?? null;
+      if (createErr || !studentUserId) {
+        console.error('createUser:', createErr?.message ?? 'no user id');
+        return json(
+          { error: 'signup_failed', detail: createErr?.message ?? 'unknown' },
+          req,
+          400,
+        );
+      }
+
+      const finalized = await finalizeRegisteredStudent(admin, studentUserId, {
+        firstName,
+        lastName,
+        fullName,
+        address: '—',
+        password,
+        ident,
+        groupSource: groupSource as GroupSource,
+        groupId,
+      });
+      if (!finalized.ok) {
+        return json(
+          { error: finalized.error, detail: finalized.detail },
+          req,
+          finalized.status,
+        );
+      }
+      return json(
+        {
+          ok: true,
+          created: true,
+          user_id: studentUserId,
+        },
+        req,
+      );
     }
 
     if (mode === 'register') {
@@ -499,7 +679,7 @@ Deno.serve(async (req) => {
       }
 
       return json(
-        { ok: true, user_id: studentUserId, xen_student_id: finalized.xenStudentId },
+        { ok: true, user_id: studentUserId },
         req,
       );
     }

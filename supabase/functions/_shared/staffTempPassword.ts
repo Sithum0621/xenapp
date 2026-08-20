@@ -28,7 +28,7 @@ export function buildStaffCredentialsEmailHtml(options: {
 
   return `
     <div style="font-family:sans-serif;color:#0F172A;max-width:520px;line-height:1.5;">
-      <p style="font-size:16px;font-weight:700;color:#123B7A;">XEN</p>
+      <p style="font-size:16px;font-weight:700;color:#123B7A;">MyTuition</p>
       <p>Hello ${safeName},</p>
       <p>Your ${safeRole} account has been created. Use the credentials below to sign in:</p>
       <table style="margin:16px 0;border-collapse:collapse;width:100%;">

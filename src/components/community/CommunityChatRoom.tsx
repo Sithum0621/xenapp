@@ -89,7 +89,7 @@ export default function CommunityChatRoom({ embedded = false }: CommunityChatRoo
         }>
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#123B7A" />
+            <ActivityIndicator size="large" color="#041830" />
           </View>
         ) : error ? (
           <View style={styles.centered}>
@@ -103,6 +103,7 @@ export default function CommunityChatRoom({ embedded = false }: CommunityChatRoo
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={listEmpty}
+            {...FLAT_LIST_PERF_SCROLLABLE}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             onContentSizeChange={() => {
@@ -110,7 +111,6 @@ export default function CommunityChatRoom({ embedded = false }: CommunityChatRoo
                 listRef.current?.scrollToEnd({ animated: false });
               }
             }}
-            {...FLAT_LIST_PERF_SCROLLABLE}
           />
         )}
       </GroupChatRoomShell>
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   embeddedTitle: {
     fontSize: 18,
     fontFamily: FontFamily.bold,
-    color: '#0E2F63',
+    color: '#00101F',
   },
   hint: {
     fontSize: 13,

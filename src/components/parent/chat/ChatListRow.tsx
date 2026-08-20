@@ -8,7 +8,7 @@ import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 import { formatChatListTime, truncateChatPreview } from '@/src/utils/groupChatFormat';
 
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 const TEXT_MUTED = '#64748B';
 const BORDER = '#E2E8F0';
 

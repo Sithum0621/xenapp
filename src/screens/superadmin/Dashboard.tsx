@@ -22,8 +22,10 @@ import SuperAdminTeacherWalletTopupsDashboardTile from '@/src/components/superad
 import SuperAdminTeacherWalletTopupsSection from '@/src/components/superadmin/SuperAdminTeacherWalletTopupsSection';
 import SuperAdminCommunityChatSection from '@/src/components/superadmin/SuperAdminCommunityChatSection';
 import SuperAdminAppReleaseSection from '@/src/components/superadmin/SuperAdminAppReleaseSection';
+import SuperAdminLandingCarouselSection from '@/src/components/superadmin/SuperAdminLandingCarouselSection';
 import InstituteDetailsFormFields from '@/src/components/superadmin/InstituteDetailsFormFields';
 import {
+  AppRoutes,
   appHref,
   hrefSuperAdminInstituteManage,
   PROFILE_ROLE_SUPERADMIN,
@@ -52,8 +54,8 @@ const DESKTOP_SIDEBAR_BREAKPOINT = 960;
 const SIDEBAR_RAIL_EXPANDED_W = 220;
 const SIDEBAR_RAIL_COLLAPSED_W = 52;
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
@@ -77,7 +79,7 @@ const DASHBOARD_STAT_TILES: DashboardStatTileDef[] = [
     icon: 'school-outline',
     labelKey: 'superAdmin.dashboardStatTeachers',
     accent: BRAND_BLUE,
-    bg: '#EFF6FF',
+    bg: '#E3F2FD',
   },
   {
     id: 'institutes',
@@ -139,7 +141,8 @@ type SuperAdminPrimaryNav =
   | 'cardOrders'
   | 'walletTopups'
   | 'communityChat'
-  | 'appReleases';
+  | 'appReleases'
+  | 'landingCarousel';
 
 function normalizeRole(role: string): string {
   return (role || '').trim().toLowerCase();
@@ -840,6 +843,11 @@ export default function SuperadminDashboard() {
     setSidebarOpen(false);
   };
 
+  const selectLandingCarouselTab = () => {
+    setPrimaryNav('landingCarousel');
+    setSidebarOpen(false);
+  };
+
   const pendingCardOrdersBadgeLabel =
     pendingCardOrdersCount > 99 ? '99+' : String(pendingCardOrdersCount);
   const pendingWalletTopupsBadgeLabel =
@@ -1066,6 +1074,49 @@ export default function SuperadminDashboard() {
         </Text>
         <View style={styles.sidebarRowTrailingSpacer} />
       </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('superAdmin.sidebarLandingCarousel')}
+        accessibilityState={{ selected: primaryNav === 'landingCarousel' }}
+        onPress={selectLandingCarouselTab}
+        style={({ pressed }) => [
+          styles.sidebarPrimaryRow,
+          primaryNav === 'landingCarousel' && styles.sidebarPrimaryRowSelected,
+          pressed && primaryNav !== 'landingCarousel' && styles.sidebarPrimaryRowPressed,
+          Platform.OS === 'web' ? styles.sidebarNavRowWeb : null,
+        ]}>
+        <Ionicons
+          name="images-outline"
+          size={18}
+          color={primaryNav === 'landingCarousel' ? '#FFFFFF' : BRAND_BLUE_DARK}
+        />
+        <Text
+          style={[
+            styles.sidebarPrimaryLabel,
+            primaryNav === 'landingCarousel' && styles.sidebarPrimaryLabelSelected,
+          ]}>
+          {t('superAdmin.sidebarLandingCarousel')}
+        </Text>
+        <View style={styles.sidebarRowTrailingSpacer} />
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('superAdmin.sidebarPolicies')}
+        onPress={() => {
+          setSidebarOpen(false);
+          router.push('/policies');
+        }}
+        style={({ pressed }) => [
+          styles.sidebarPrimaryRow,
+          pressed && styles.sidebarPrimaryRowPressed,
+          Platform.OS === 'web' ? styles.sidebarNavRowWeb : null,
+        ]}>
+        <Ionicons name="document-text-outline" size={18} color={BRAND_BLUE_DARK} />
+        <Text style={styles.sidebarPrimaryLabel}>{t('superAdmin.sidebarPolicies')}</Text>
+        <View style={styles.sidebarRowTrailingSpacer} />
+      </Pressable>
     </>
   );
 
@@ -1086,13 +1137,15 @@ export default function SuperadminDashboard() {
           </Pressable>
         ) : null}
         <Text style={styles.title}>{t('superAdmin.title')}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('superAdmin.signOut')}
-          onPress={() => void handleSignOut()}
-          style={({ pressed }) => [styles.signOutBtn, pressed && styles.signOutBtnPressed]}>
-          <Ionicons name="log-out-outline" size={22} color={BRAND_BLUE_DARK} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('superAdmin.signOut')}
+            onPress={() => void handleSignOut()}
+            style={({ pressed }) => [styles.signOutBtn, pressed && styles.signOutBtnPressed]}>
+            <Ionicons name="log-out-outline" size={22} color={BRAND_BLUE_DARK} />
+          </Pressable>
+        </View>
       </View>
 
       {primaryNav === 'dashboard' ? (
@@ -1375,6 +1428,8 @@ export default function SuperadminDashboard() {
         <SuperAdminCommunityChatSection desktopShell={desktopShell} />
       ) : primaryNav === 'appReleases' ? (
         <SuperAdminAppReleaseSection desktopShell={desktopShell} />
+      ) : primaryNav === 'landingCarousel' ? (
+        <SuperAdminLandingCarouselSection desktopShell={desktopShell} />
       ) : (
         <>
           <Text style={styles.subtitle}>{t('superAdmin.subtitle')}</Text>
@@ -1691,6 +1746,23 @@ export default function SuperadminDashboard() {
                 color={primaryNav === 'appReleases' ? '#FFFFFF' : BRAND_BLUE_DARK}
               />
             </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('superAdmin.sidebarLandingCarousel')}
+              accessibilityState={{ selected: primaryNav === 'landingCarousel' }}
+              onPress={selectLandingCarouselTab}
+              style={({ pressed }) => [
+                styles.winRailIconBtn,
+                primaryNav === 'landingCarousel' && styles.winRailIconBtnSelected,
+                pressed && primaryNav !== 'landingCarousel' && styles.winRailIconBtnPressed,
+                Platform.OS === 'web' ? styles.winRailIconBtnWeb : null,
+              ]}>
+              <Ionicons
+                name="images-outline"
+                size={22}
+                color={primaryNav === 'landingCarousel' ? '#FFFFFF' : BRAND_BLUE_DARK}
+              />
+            </Pressable>
           </>
         ) : (
           sidebarNavScrollContent
@@ -1975,6 +2047,10 @@ const styles = StyleSheet.create({
   },
   signOutBtnPressed: {
     opacity: 0.65,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   subtitle: {
     fontSize: 14,
@@ -2416,7 +2492,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   addInstituteTriggerBtnPressed: {
     opacity: 0.88,

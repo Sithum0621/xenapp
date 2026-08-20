@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0E2F63',
+    color: '#00101F',
     marginBottom: 6,
     marginTop: 10,
   },

@@ -27,8 +27,8 @@ import {
 } from '@/src/utils/instituteFormValidation';
 import { buildResendFailureMessage } from '@/src/utils/resendEmailFailureHint';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const PAGE_BG = '#FFFFFF';
 const TEXT_MUTED = '#64748B';
 const SUBTLE_BORDER = '#E2E8F0';
@@ -969,7 +969,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: BRAND_BLUE,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     flexShrink: 0,
   },
   brandSecondaryBtnPressed: {
@@ -1034,7 +1034,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: '#BFDBFE',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     minWidth: 88,
     alignItems: 'center',
   },
@@ -1220,7 +1220,7 @@ const styles = StyleSheet.create({
     borderColor: BRAND_BLUE,
   },
   profilesTabBtnPressed: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   profilesTabBtnText: {
     fontSize: 14,
@@ -1297,7 +1297,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   profilesPanelCollapseBtnPressed: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
   },
   profilesPanelHeading: {
     fontSize: 15,
@@ -1352,7 +1352,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0 8px 24px rgba(18, 59, 122, 0.12)' },
       ios: {
-        shadowColor: '#123B7A',
+        shadowColor: '#041830',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.12,
         shadowRadius: 24,

@@ -1,66 +1,53 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import { Text } from '@/src/theme/Text';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { Platform, StyleSheet, View } from "react-native";
 
-import ScrollFriendlyPressable from '@/src/components/layout/ScrollFriendlyPressable';
-
-import { FontFamily } from '@/src/theme/fonts';
-
+import ScrollFriendlyPressable from "@/src/components/layout/ScrollFriendlyPressable";
+import { Text } from "@/src/theme/Text";
+import { FontFamily } from "@/src/theme/fonts";
 import {
-  parentBorder,
-  parentBrandBlue,
-  parentBrandBlueDark,
-  parentSurface,
-} from '@/src/theme/parentDashboardPalette';
+    parentBorder,
+    parentBrandBlue,
+    parentBrandBlueDark,
+    parentSurface,
+} from "@/src/theme/parentDashboardPalette";
 
 const BRAND_BLUE_DARK = parentBrandBlueDark;
 const BRAND_BLUE = parentBrandBlue;
 const BORDER = parentBorder;
 const SURFACE = parentSurface;
 
-export type MyClassCardButtonProps = {
-  studentUserId: string | null;
-};
-
 /**
- * Full-width action that opens the student's digital class card screen.
+ * Opens My Class Cards to scan teacher-issued card QRs and keep soft copies.
  */
-export default function MyClassCardButton({ studentUserId }: MyClassCardButtonProps) {
+export default function MyClassCardButton() {
   const { t } = useTranslation();
-
-  const onPress = () => {
-    if (!studentUserId) return;
-    router.push({
-      pathname: '/parent-dashboard/class-card',
-      params: { studentId: studentUserId },
-    });
-  };
 
   return (
     <ScrollFriendlyPressable
       accessibilityRole="button"
-      accessibilityLabel={t('parentDashboard.myClassCardTitle')}
-      disabled={!studentUserId}
-      onPress={onPress}
-      style={[!studentUserId && styles.buttonDisabled]}
-      innerStyle={[styles.button, !studentUserId && styles.buttonDisabled]}>
-      <View style={styles.iconTile} pointerEvents="none">
+      accessibilityLabel={t("parentDashboard.myClassCardTitle")}
+      onPress={() => router.push("/parent-dashboard/class-card")}
+      innerStyle={styles.button}
+    >
+      <View style={styles.iconTile}>
         <Ionicons name="card-outline" size={22} color={BRAND_BLUE} />
       </View>
-      <Text style={styles.label} pointerEvents="none">
-        {t('parentDashboard.myClassCardTitle')}
+      <Text style={styles.label}>
+        {t("parentDashboard.myClassCardTitle")}
       </Text>
-      <Ionicons name="chevron-forward" size={20} color={BRAND_BLUE_DARK} pointerEvents="none" />
+      <View style={styles.scanTile}>
+        <Ionicons name="qr-code-outline" size={22} color={BRAND_BLUE} />
+      </View>
     </ScrollFriendlyPressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     backgroundColor: SURFACE,
     borderRadius: 20,
@@ -68,26 +55,39 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    width: '100%',
+    width: "100%",
     ...Platform.select({
       android: { elevation: 3 },
+      web: {
+        boxShadow: "0 8px 18px rgba(0, 16, 31, 0.08)",
+      },
       default: {
-        shadowColor: '#0E2F63',
+        shadowColor: "#00101F",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.08,
         shadowRadius: 18,
       },
     }),
   },
-  buttonPressed: { opacity: 0.92 },
-  buttonDisabled: { opacity: 0.55 },
   iconTile: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(46, 84, 148, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(46, 84, 148, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+    pointerEvents: "none",
+  },
+  scanTile: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+    pointerEvents: "none",
   },
   label: {
     flex: 1,
@@ -96,5 +96,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     color: BRAND_BLUE_DARK,
     letterSpacing: -0.2,
+    pointerEvents: "none",
   },
 });

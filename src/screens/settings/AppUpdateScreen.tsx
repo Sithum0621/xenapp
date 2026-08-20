@@ -9,10 +9,12 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { Text } from '@/src/theme/Text';
-import { AppRoutes, appHref, type AppRoutePath } from '@/src/navigation/AppNavigator';
+import type { Href } from 'expo-router';
+
+import { AppRoutes } from '@/src/navigation/AppNavigator';
 import {
   downloadAndroidApk,
   formatByteSize,
@@ -27,10 +29,11 @@ import {
   isAndroidUpdateAvailable,
   type AndroidAppRelease,
 } from '@/src/services/appReleaseApi';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 
-const BRAND_BLUE_DARK = '#0E2F63';
-const BRAND_BLUE = '#123B7A';
+const BRAND_BLUE_DARK = '#00101F';
+const BRAND_BLUE = '#041830';
 const BORDER = '#E2E8F0';
 const TEXT_MUTED = '#64748B';
 const SURFACE = '#FFFFFF';
@@ -40,11 +43,16 @@ const SUCCESS = '#15803D';
 type DownloadPhase = 'idle' | 'downloading' | 'ready' | 'error';
 
 type Props = {
-  fallbackRoute?: AppRoutePath;
+  fallbackRoute?: Href;
+  /**
+   * When true, skip SafeArea + BrandHeader shell (e.g. nested under AdminDashboardShell).
+   */
+  embedded?: boolean;
 };
 
 export default function AppUpdateScreen({
-  fallbackRoute = appHref(AppRoutes.parentDashboard),
+  fallbackRoute = AppRoutes.parentDashboard,
+  embedded = false,
 }: Props) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -141,190 +149,171 @@ export default function AppUpdateScreen({
   const primaryDisabled =
     Platform.OS !== 'android' || !release || phase === 'downloading' || installing;
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => routerBackOrReplace(router, fallbackRoute)}
-          style={({ pressed }) => [styles.backRow, pressed && { opacity: 0.75 }]}>
-          <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
-          <Text style={styles.backLabel}>{t('appLock.back')}</Text>
-        </Pressable>
-        <Text style={styles.title}>{t('parentDashboard.appUpdateTitle')}</Text>
-        <Text style={styles.subtitle}>{t('parentDashboard.appUpdateSubtitle')}</Text>
-      </View>
+  const body = (
+    <View style={styles.content}>
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <Text style={styles.label}>{t('parentDashboard.appUpdateInstalled')}</Text>
+          <Text style={styles.value}>{installedLabel}</Text>
+        </View>
 
-      <View style={styles.content}>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <Text style={styles.label}>{t('parentDashboard.appUpdateInstalled')}</Text>
-            <Text style={styles.value}>{installedLabel}</Text>
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator size="small" color={BRAND_BLUE} />
+            <Text style={styles.muted}>{t('parentDashboard.appUpdateChecking')}</Text>
           </View>
-
-          {loading ? (
-            <View style={styles.loader}>
-              <ActivityIndicator size="small" color={BRAND_BLUE} />
-              <Text style={styles.muted}>{t('parentDashboard.appUpdateChecking')}</Text>
-            </View>
-          ) : release ? (
-            <>
-              <View style={styles.row}>
-                <Text style={styles.label}>{t('parentDashboard.appUpdateLatest')}</Text>
-                <Text style={styles.value}>
-                  {release.versionName} ({release.versionCode})
-                </Text>
-              </View>
-
-              {release.releaseNotes ? (
-                <Text style={styles.notes}>{release.releaseNotes}</Text>
-              ) : null}
-
-              <View
-                style={[
-                  styles.statusPill,
-                  updateAvailable ? styles.statusPillUpdate : styles.statusPillCurrent,
-                ]}>
-                <Ionicons
-                  name={updateAvailable ? 'cloud-download-outline' : 'checkmark-circle-outline'}
-                  size={16}
-                  color={updateAvailable ? BRAND_BLUE_DARK : SUCCESS}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    updateAvailable ? styles.statusTextUpdate : styles.statusTextCurrent,
-                  ]}>
-                  {updateAvailable
-                    ? t('parentDashboard.appUpdateAvailable')
-                    : t('parentDashboard.appUpdateUpToDate')}
-                </Text>
-              </View>
-            </>
-          ) : null}
-
-          {phase === 'downloading' ? (
-            <View style={styles.progressBlock}>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${Math.max(progressPercent, 4)}%` }]} />
-              </View>
-              <Text style={styles.progressText}>
-                {t('parentDashboard.appUpdateDownloading', { percent: progressPercent })}
+        ) : release ? (
+          <>
+            <View style={styles.row}>
+              <Text style={styles.label}>{t('parentDashboard.appUpdateLatest')}</Text>
+              <Text style={styles.value}>
+                {release.versionName} ({release.versionCode})
               </Text>
-              {progress && progress.totalBytes > 0 ? (
-                <Text style={styles.progressMeta}>
-                  {formatByteSize(progress.downloadedBytes)} / {formatByteSize(progress.totalBytes)}
-                </Text>
+            </View>
+
+            {release.releaseNotes ? (
+              <Text style={styles.notes}>{release.releaseNotes}</Text>
+            ) : null}
+
+            <View
+              style={[
+                styles.statusPill,
+                updateAvailable ? styles.statusPillUpdate : styles.statusPillCurrent,
+              ]}>
+              <Ionicons
+                name={updateAvailable ? 'cloud-download-outline' : 'checkmark-circle-outline'}
+                size={16}
+                color={updateAvailable ? BRAND_BLUE_DARK : SUCCESS}
+              />
+              <Text
+                style={[
+                  styles.statusText,
+                  updateAvailable ? styles.statusTextUpdate : styles.statusTextCurrent,
+                ]}>
+                {updateAvailable
+                  ? t('parentDashboard.appUpdateAvailable')
+                  : t('parentDashboard.appUpdateUpToDate')}
+              </Text>
+            </View>
+          </>
+        ) : null}
+
+        {phase === 'downloading' ? (
+          <View style={styles.progressBlock}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.max(progressPercent, 4)}%` }]} />
+            </View>
+            <Text style={styles.progressText}>
+              {t('parentDashboard.appUpdateDownloading', { percent: progressPercent })}
+            </Text>
+            {progress && progress.totalBytes > 0 ? (
+              <Text style={styles.progressMeta}>
+                {formatByteSize(progress.downloadedBytes)} / {formatByteSize(progress.totalBytes)}
+              </Text>
+            ) : (
+              <Text style={styles.progressMeta}>{t('parentDashboard.appUpdateDownloadingWait')}</Text>
+            )}
+          </View>
+        ) : null}
+
+        {phase === 'ready' ? (
+          <View style={styles.readyBlock}>
+            <Ionicons name="checkmark-circle" size={20} color={SUCCESS} />
+            <Text style={styles.readyText}>{t('parentDashboard.appUpdateDownloadComplete')}</Text>
+          </View>
+        ) : null}
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {Platform.OS === 'android' && release ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              disabled={primaryDisabled}
+              onPress={() => void onPrimaryAction()}
+              style={({ pressed }) => [
+                styles.downloadBtn,
+                pressed && !primaryDisabled && styles.downloadBtnPressed,
+                primaryDisabled && styles.downloadBtnDisabled,
+              ]}>
+              {phase === 'downloading' || installing ? (
+                <ActivityIndicator size="small" color={SURFACE} />
               ) : (
-                <Text style={styles.progressMeta}>{t('parentDashboard.appUpdateDownloadingWait')}</Text>
+                <Ionicons
+                  name={phase === 'ready' ? 'construct-outline' : 'download-outline'}
+                  size={18}
+                  color={SURFACE}
+                />
               )}
-            </View>
-          ) : null}
+              <Text style={styles.downloadBtnText}>
+                {phase === 'downloading'
+                  ? t('parentDashboard.appUpdateDownloadingShort')
+                  : installing
+                    ? t('parentDashboard.appUpdateInstalling')
+                    : primaryLabel}
+              </Text>
+            </Pressable>
 
-          {phase === 'ready' ? (
-            <View style={styles.readyBlock}>
-              <Ionicons name="checkmark-circle" size={20} color={SUCCESS} />
-              <Text style={styles.readyText}>{t('parentDashboard.appUpdateDownloadComplete')}</Text>
-            </View>
-          ) : null}
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {Platform.OS === 'android' && release ? (
-            <>
+            {phase === 'error' ? (
               <Pressable
                 accessibilityRole="button"
-                disabled={primaryDisabled}
-                onPress={() => void onPrimaryAction()}
-                style={({ pressed }) => [
-                  styles.downloadBtn,
-                  pressed && !primaryDisabled && styles.downloadBtnPressed,
-                  primaryDisabled && styles.downloadBtnDisabled,
-                ]}>
-                {phase === 'downloading' || installing ? (
-                  <ActivityIndicator size="small" color={SURFACE} />
-                ) : (
-                  <Ionicons
-                    name={phase === 'ready' ? 'construct-outline' : 'download-outline'}
-                    size={18}
-                    color={SURFACE}
-                  />
-                )}
-                <Text style={styles.downloadBtnText}>
-                  {phase === 'downloading'
-                    ? t('parentDashboard.appUpdateDownloadingShort')
-                    : installing
-                      ? t('parentDashboard.appUpdateInstalling')
-                      : primaryLabel}
+                onPress={() => void openBrowserFallback()}
+                style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryBtnPressed]}>
+                <Ionicons name="globe-outline" size={16} color={BRAND_BLUE_DARK} />
+                <Text style={styles.secondaryBtnText}>
+                  {t('parentDashboard.appUpdateOpenBrowser')}
                 </Text>
               </Pressable>
-
-              {phase === 'error' ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void openBrowserFallback()}
-                  style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryBtnPressed]}>
-                  <Ionicons name="globe-outline" size={16} color={BRAND_BLUE_DARK} />
-                  <Text style={styles.secondaryBtnText}>
-                    {t('parentDashboard.appUpdateOpenBrowser')}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </>
-          ) : Platform.OS !== 'android' ? (
-            <Text style={styles.muted}>{t('parentDashboard.appUpdateAndroidOnly')}</Text>
-          ) : null}
-        </View>
-
-        <View style={styles.stepsCard}>
-          <Text style={styles.stepsTitle}>{t('parentDashboard.appUpdateStepsTitle')}</Text>
-          <View style={styles.stepRow}>
-            <View style={styles.stepBadge}>
-              <Text style={styles.stepNumber}>1</Text>
-            </View>
-            <Text style={styles.stepText}>{t('parentDashboard.appUpdateStepDownload')}</Text>
-          </View>
-          <View style={styles.stepRow}>
-            <View style={styles.stepBadge}>
-              <Text style={styles.stepNumber}>2</Text>
-            </View>
-            <Text style={styles.stepText}>{t('parentDashboard.appUpdateStepInstall')}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.hint}>{t('parentDashboard.appUpdateHint')}</Text>
+            ) : null}
+          </>
+        ) : Platform.OS !== 'android' ? (
+          <Text style={styles.muted}>{t('parentDashboard.appUpdateAndroidOnly')}</Text>
+        ) : null}
       </View>
-    </SafeAreaView>
+
+      <View style={styles.stepsCard}>
+        <Text style={styles.stepsTitle}>{t('parentDashboard.appUpdateStepsTitle')}</Text>
+        <View style={styles.stepRow}>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepNumber}>1</Text>
+          </View>
+          <Text style={styles.stepText}>{t('parentDashboard.appUpdateStepDownload')}</Text>
+        </View>
+        <View style={styles.stepRow}>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepNumber}>2</Text>
+          </View>
+          <Text style={styles.stepText}>{t('parentDashboard.appUpdateStepInstall')}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.hint}>{t('parentDashboard.appUpdateHint')}</Text>
+    </View>
+  );
+
+  if (embedded) {
+    return body;
+  }
+
+  return (
+    <DashboardScreenShell
+      showBack
+      title={t('parentDashboard.appUpdateTitle')}
+      subtitle={t('parentDashboard.appUpdateSubtitle')}
+      onBack={() => routerBackOrReplace(router, fallbackRoute)}>
+      {body}
+    </DashboardScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SURFACE_ALT },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
-    backgroundColor: SURFACE,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BORDER,
-  },
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 10,
-    alignSelf: 'flex-start',
-  },
-  backLabel: { fontSize: 15, fontWeight: '700', color: BRAND_BLUE_DARK },
-  title: { fontSize: 22, fontWeight: '900', color: BRAND_BLUE_DARK, letterSpacing: -0.2 },
-  subtitle: { fontSize: 13.5, color: TEXT_MUTED, marginTop: 2 },
-  content: { paddingHorizontal: 16, paddingTop: 18, gap: 12 },
+  content: { gap: 12, paddingBottom: 24 },
   card: {
     backgroundColor: SURFACE,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BORDER,
-    padding: 16,
+    padding: PAGE_EDGE_INSET,
     gap: 12,
   },
   row: { gap: 4 },

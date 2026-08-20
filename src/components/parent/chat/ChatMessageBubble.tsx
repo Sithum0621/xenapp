@@ -4,12 +4,13 @@ import { StyleSheet, View } from 'react-native';
 import type { GroupChatMessage } from '@/src/services/groupChatApi';
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { formatChatMessageTime } from '@/src/utils/groupChatFormat';
 
 const INCOMING_BG = '#FFFFFF';
 const OUTGOING_BG = '#DCFCE7';
 const TEXT_MUTED = '#64748B';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE_DARK = '#00101F';
 
 type Props = {
   message: GroupChatMessage;
@@ -39,7 +40,7 @@ export default memo(ChatMessageBubble);
 
 const styles = StyleSheet.create({
   row: {
-    paddingHorizontal: 12,
+    paddingHorizontal: PAGE_EDGE_INSET,
     paddingVertical: 3,
     maxWidth: '100%',
   },
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 12,
     fontFamily: FontFamily.bold,
-    color: '#123B7A',
+    color: '#041830',
   },
   body: {
     fontSize: 15,

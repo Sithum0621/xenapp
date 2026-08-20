@@ -1,0 +1,24 @@
+# Keep Vercel upload lean (web export only needs source + lockfile)
+node_modules
+.expo
+dist
+web-build
+.git
+.kotlin
+ios
+android
+xen
+gif
+*.apk
+*.aab
+*.jks
+.env
+.env.*
+!.env.example
+google-services.json
+GoogleService-Info.plist
+firebase-service-account.json
+supabase/.temp
+agent-transcripts
+coverage
+.turbo

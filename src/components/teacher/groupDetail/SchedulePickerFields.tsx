@@ -21,8 +21,8 @@ import {
   isoToDateParts,
 } from '@/src/utils/scheduleFormParts';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const BRAND_BLUE_BORDER = '#BFDBFE';
 const PAGE_SURFACE = '#F8FAFC';
@@ -103,7 +103,6 @@ export function ScheduleDatePickerField({
   if (Platform.OS === 'web') {
     return (
       <View style={styles.webWrap}>
-        {/* @ts-expect-error web date input */}
         <input
           type="date"
           value={iso}
@@ -499,7 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: PAGE_SURFACE,
     ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
   },
-  triggerPressed: { borderColor: BRAND_BLUE, backgroundColor: '#EFF6FF' },
+  triggerPressed: { borderColor: BRAND_BLUE, backgroundColor: '#E3F2FD' },
   triggerDisabled: { opacity: 0.55 },
   triggerText: {
     flex: 1,
@@ -543,7 +542,7 @@ const styles = StyleSheet.create({
     top: WHEEL_ITEM_HEIGHT * 2,
     height: WHEEL_ITEM_HEIGHT,
     borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E3F2FD',
     borderWidth: 1,
     borderColor: BRAND_BLUE_BORDER,
     zIndex: 0,

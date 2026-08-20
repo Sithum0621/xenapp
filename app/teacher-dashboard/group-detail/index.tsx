@@ -9,14 +9,16 @@ import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, St
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import BrandHeader from '@/src/components/parent/BrandHeader';
 import TeacherGroupDetailMenu from '@/src/components/teacher/groupDetail/TeacherGroupDetailMenu';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { teacherDeletePersonalGroup, teacherUpdatePersonalGroup } from '@/src/services/teacherGroupsApi';
+import { PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { routerBackOrReplace } from '@/src/utils/routerSafeBack';
 import { parseTeacherGroupParams, type TeacherGroupRouteContext } from '@/src/utils/teacherGroupRouteParams';
 
-const BRAND_BLUE = '#123B7A';
-const BRAND_BLUE_DARK = '#0E2F63';
+const BRAND_BLUE = '#041830';
+const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 
@@ -142,6 +144,7 @@ export default function TeacherGroupDetailHubScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <BrandHeader />
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -246,7 +249,7 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   header: {
-    paddingHorizontal: 22,
+    paddingHorizontal: PAGE_EDGE_INSET,
     paddingTop: 10,
     paddingBottom: 4,
     backgroundColor: '#FFFFFF',
@@ -282,7 +285,7 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND_BLUE,
   },
   actionsCard: {
-    marginHorizontal: 18,
+    marginHorizontal: PAGE_EDGE_INSET,
     marginTop: 16,
     flexDirection: 'row',
     flexWrap: 'wrap',
