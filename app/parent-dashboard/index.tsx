@@ -28,13 +28,15 @@ import ParentBottomDock, {
 } from '@/src/components/parent/ParentBottomDock';
 import SubscriptionExpiredOverlay from '@/src/components/subscription/SubscriptionExpiredOverlay';
 import { useSubscriptionStatus } from '@/src/components/subscription/useSubscriptionStatus';
+import PushNotificationSettingsRow from '@/src/components/push/PushNotificationSettingsRow';
 import SuperadminDevDashboardSwitcher from '@/src/components/SuperadminDevDashboardSwitcher';
 import { signOutAndReturnToLogin } from '@/src/navigation/signOutAndReturnToLogin';
 import { getParentDashboardTab } from '@/src/navigation/parentDashboardTabStore';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { useActiveGamesScheduleExam } from '@/src/contexts/ActiveGamesScheduleExamContext';
+import { getSessionCacheEntry, SessionCacheKeys } from '@/src/services/sessionDataCache';
 import {
-  fetchParentStudents,
+  getParentStudentsCached,
   type ParentLinkedStudent,
 } from '@/src/services/parentStudentsApi';
 
@@ -115,10 +117,15 @@ export default function ParentDashboardHome() {
     insets.bottom,
   );
 
-  const loadStudents = useCallback(async (preferStudentId?: string) => {
-    setStudentsLoading(true);
+  const loadStudents = useCallback(async (preferStudentId?: string, force = false) => {
+    const cached = getSessionCacheEntry<Awaited<ReturnType<typeof getParentStudentsCached>>>(
+      SessionCacheKeys.PARENT_STUDENTS,
+    );
+    if (!cached?.data || force) {
+      setStudentsLoading(true);
+    }
     setStudentsError(null);
-    const result = await fetchParentStudents();
+    const result = await getParentStudentsCached({ force });
     if (result.ok) {
       setStudents(result.students);
       setSelectedStudentId((current) => {
@@ -151,7 +158,7 @@ export default function ParentDashboardHome() {
 
   const refreshClassesTab = useCallback(async () => {
     setClassesRefreshing(true);
-    await loadStudents();
+    await loadStudents(undefined, true);
     setClassesRefreshNonce((n) => n + 1);
     setClassesRefreshing(false);
   }, [loadStudents]);
@@ -211,7 +218,7 @@ export default function ParentDashboardHome() {
 
   const handleStudentLinked = useCallback(
     (studentUserId?: string) => {
-      void loadStudents(studentUserId);
+      void loadStudents(studentUserId, true);
     },
     [loadStudents],
   );
@@ -405,20 +412,9 @@ export default function ParentDashboardHome() {
           <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
         </ScrollFriendlyPressable>
 
-        <ScrollFriendlyPressable
-          accessibilityRole="button"
-          onPress={() => router.push('/fcm-test')}
-          style={styles.menuItem}
-          innerStyle={styles.menuItemInner}>
-          <View style={styles.menuItemIcon}>
-            <Ionicons name="notifications-outline" size={18} color={BRAND_BLUE_DARK} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.menuItemTitle}>{t('parentDashboard.settingsPushTest')}</Text>
-            <Text style={styles.menuItemSub}>{t('parentDashboard.settingsPushTestHint')}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
-        </ScrollFriendlyPressable>
+        <View style={styles.menuItem}>
+          <PushNotificationSettingsRow />
+        </View>
 
         <ScrollFriendlyPressable
           accessibilityRole="button"

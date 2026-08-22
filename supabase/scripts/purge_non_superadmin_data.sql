@@ -31,7 +31,6 @@ BEGIN
     public.games_schedule_event_questions,
     public.games_schedule_events,
     public.games_schedule_subjects,
-    public.class_reminder_dispatches,
     public.group_attendance_marks,
     public.group_attendance_sessions,
     public.group_chat_messages,

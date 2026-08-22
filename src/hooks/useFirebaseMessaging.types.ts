@@ -1,6 +1,8 @@
 export type UseFirebaseMessagingOptions = {
   syncToSupabase?: boolean;
   handleNotificationNavigation?: boolean;
+  /** When true, permission is only requested from the home prompt / settings (default true). */
+  deferPermissionRequest?: boolean;
 };
 
 export type UseFirebaseMessagingResult = {

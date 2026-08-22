@@ -64,11 +64,19 @@ export function TeacherClassCardQrZoneOverlay({
 export default memo(TeacherClassCardDefaultPreview);
 
 const styles = StyleSheet.create({
-  card: { flex: 1, overflow: 'hidden' },
+  card: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
   topBar: { height: 8, backgroundColor: '#041830' },
   topBarCompact: { height: 4 },
-  frontBody: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, padding: 10 },
-  mark: { width: '42%', height: '42%' },
+  frontBody: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  mark: { width: '22%', aspectRatio: 1, maxHeight: '70%' },
   wordMy: { fontSize: 18, fontFamily: FontFamily.black, color: '#38BDF8' },
   wordTuition: { color: '#041830', fontFamily: FontFamily.black },
   wordCompact: { fontSize: 10 },

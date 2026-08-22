@@ -22,6 +22,7 @@ import AuthRouteGuard from "@/src/components/auth/AuthRouteGuard";
 import SessionTimeoutGuard from "@/src/components/auth/SessionTimeoutGuard";
 import TempPasswordGuard from "@/src/components/auth/TempPasswordGuard";
 import FcmBootstrap from "@/src/components/push/FcmBootstrap";
+import PushNotificationPermissionPrompt from "@/src/components/push/PushNotificationPermissionPrompt";
 import { AppAlertProvider } from "@/src/context/AppAlertContext";
 import { AppLockProvider } from "@/src/context/AppLockContext";
 import {
@@ -154,6 +155,7 @@ function RootLayoutNav() {
           <SessionTimeoutGuard />
           <TempPasswordGuard />
           <FcmBootstrap />
+          <PushNotificationPermissionPrompt />
           <StatusBar style={colors.statusBarStyle} />
         </AppLockProvider>
       </AppAlertProvider>

@@ -40,3 +40,7 @@ verify_jwt = false
 
 [functions.payhere-teacher-wallet-notify]
 verify_jwt = false
+
+# Public Firebase web client config (public keys only); no user JWT on preflight.
+[functions.firebase-web-config]
+verify_jwt = false

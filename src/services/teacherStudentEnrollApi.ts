@@ -39,6 +39,8 @@ export type TeacherStudentEnrollLinkByMobilePayload = {
 export type TeacherStudentEnrollLookupByMobilePayload = {
   mode: 'lookup_by_mobile';
   mobile_number: string;
+  group_source?: TeacherStudentEnrollGroupSource;
+  group_id?: string;
 };
 
 export type TeacherStudentMobileCandidate = {
@@ -109,17 +111,12 @@ async function invokeTeacherStudentEnroll(
 
 export async function teacherStudentEnrollRegister(
   payload: Omit<TeacherStudentEnrollRegisterPayload, 'mode'>,
-): Promise<{ ok: boolean; error?: string; detail?: string; xenStudentId?: string }> {
+): Promise<{ ok: boolean; error?: string; detail?: string }> {
   const { ok, json } = await invokeTeacherStudentEnroll({ mode: 'register', ...payload });
-  const xenStudentId =
-    typeof json.xen_student_id === 'string' && json.xen_student_id.trim()
-      ? json.xen_student_id.trim()
-      : undefined;
   return {
     ok,
     error: typeof json.error === 'string' ? json.error : undefined,
     detail: typeof json.detail === 'string' ? json.detail : undefined,
-    xenStudentId: ok ? xenStudentId : undefined,
   };
 }
 
@@ -207,7 +204,6 @@ export async function teacherStudentEnrollAddByNameMobile(
   error?: string;
   detail?: string;
   created?: boolean;
-  xenStudentId?: string;
   password?: string;
 }> {
   const { ok, json } = await invokeTeacherStudentEnroll({ mode: 'add_by_name_mobile', ...payload });
@@ -219,10 +215,6 @@ export async function teacherStudentEnrollAddByNameMobile(
     error: typeof json.error === 'string' ? json.error : undefined,
     detail: typeof json.detail === 'string' ? json.detail : undefined,
     created: json.created === true,
-    xenStudentId:
-      typeof json.xen_student_id === 'string' && json.xen_student_id.trim()
-        ? json.xen_student_id.trim()
-        : undefined,
     password: typeof json.password === 'string' ? json.password : undefined,
   };
 }

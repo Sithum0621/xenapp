@@ -12,6 +12,7 @@ import {
 
 import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
+import { SMS_NOTIFICATIONS_ENABLED } from '@/src/constants/smsNotifications';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import {
   invalidateSessionCache,
@@ -151,6 +152,10 @@ export default function TeacherSmsCreditScreen() {
 
   const onToggleChannel = async (channel: 'attendance' | 'payments', enabled: boolean) => {
     if (!account) return;
+    if (!SMS_NOTIFICATIONS_ENABLED) {
+      appAlert(ov('smsCreditTitle'), ov('smsNotificationsDisabledBody'));
+      return;
+    }
     setChannelBusy(channel);
     const next = {
       attendanceSmsEnabled:
@@ -363,7 +368,11 @@ export default function TeacherSmsCreditScreen() {
         {!loading && account && !creating ? (
           <View style={styles.buyCard}>
             <Text style={styles.buyTitle}>{ov('smsManageTitle')}</Text>
-            <Text style={styles.rateText}>{ov('smsManageHint')}</Text>
+            {!SMS_NOTIFICATIONS_ENABLED ? (
+              <Text style={styles.rateText}>{ov('smsNotificationsDisabledBody')}</Text>
+            ) : (
+              <Text style={styles.rateText}>{ov('smsManageHint')}</Text>
+            )}
             <View style={styles.toggleRow}>
               <View style={styles.toggleCopy}>
                 <Text style={styles.toggleTitle}>{ov('smsManageAttendance')}</Text>
@@ -373,11 +382,13 @@ export default function TeacherSmsCreditScreen() {
                 <ActivityIndicator color={BRAND_BLUE} />
               ) : (
                 <Switch
-                  value={account.attendanceSmsEnabled}
-                  disabled={channelBusy != null}
+                  value={SMS_NOTIFICATIONS_ENABLED ? account.attendanceSmsEnabled : false}
+                  disabled={!SMS_NOTIFICATIONS_ENABLED || channelBusy != null}
                   onValueChange={(v) => void onToggleChannel('attendance', v)}
                   trackColor={{ false: '#CBD5E1', true: '#C4B5FD' }}
-                  thumbColor={account.attendanceSmsEnabled ? VIOLET : '#F4F4F5'}
+                  thumbColor={
+                    SMS_NOTIFICATIONS_ENABLED && account.attendanceSmsEnabled ? VIOLET : '#F4F4F5'
+                  }
                   accessibilityLabel={ov('smsManageAttendance')}
                 />
               )}
@@ -391,11 +402,13 @@ export default function TeacherSmsCreditScreen() {
                 <ActivityIndicator color={BRAND_BLUE} />
               ) : (
                 <Switch
-                  value={account.paymentsSmsEnabled}
-                  disabled={channelBusy != null}
+                  value={SMS_NOTIFICATIONS_ENABLED ? account.paymentsSmsEnabled : false}
+                  disabled={!SMS_NOTIFICATIONS_ENABLED || channelBusy != null}
                   onValueChange={(v) => void onToggleChannel('payments', v)}
                   trackColor={{ false: '#CBD5E1', true: '#C4B5FD' }}
-                  thumbColor={account.paymentsSmsEnabled ? VIOLET : '#F4F4F5'}
+                  thumbColor={
+                    SMS_NOTIFICATIONS_ENABLED && account.paymentsSmsEnabled ? VIOLET : '#F4F4F5'
+                  }
                   accessibilityLabel={ov('smsManagePayments')}
                 />
               )}

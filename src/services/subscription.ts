@@ -22,7 +22,7 @@ export function subscriptionCountdownVisibleForRole(role: string | undefined | n
   return role === 'parent_student';
 }
 
-export type SubscriptionPlanReason = 'ok' | 'free' | 'trial' | 'paid' | 'expired' | 'not_found' | 'device_mismatch';
+export type SubscriptionPlanReason = 'ok' | 'free' | 'trial' | 'paid' | 'expired' | 'not_found';
 
 export type SubscriptionAccessResult = {
   can_access: boolean;

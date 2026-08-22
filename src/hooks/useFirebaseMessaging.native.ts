@@ -6,6 +6,7 @@ import type {
   UseFirebaseMessagingOptions,
   UseFirebaseMessagingResult,
 } from '@/src/hooks/useFirebaseMessaging.types';
+import { setPushTokenRefreshHandler } from '@/src/push/enablePushNotifications';
 import { useNotificationOpenNavigation } from '@/src/hooks/useNotificationOpenNavigation';
 import { displaySystemNotification } from '@/src/push/displaySystemNotification';
 import type { FcmRemoteMessage } from '@/src/push/fcmRemoteMessage';
@@ -24,7 +25,11 @@ export type {
 export function useFirebaseMessaging(
   options: UseFirebaseMessagingOptions = {},
 ): UseFirebaseMessagingResult {
-  const { syncToSupabase = true, handleNotificationNavigation = true } = options;
+  const {
+    syncToSupabase = true,
+    handleNotificationNavigation = true,
+    deferPermissionRequest = true,
+  } = options;
 
   const fcmTokenRef = useRef<string | null>(null);
   const lastSyncedTokenRef = useRef<string | null>(null);
@@ -64,10 +69,18 @@ export function useFirebaseMessaging(
   }, [syncTokenToSupabase]);
 
   useEffect(() => {
+    setPushTokenRefreshHandler(refreshToken);
+    return () => setPushTokenRefreshHandler(null);
+  }, [refreshToken]);
+
+  useEffect(() => {
     let cancelled = false;
 
     const bootstrap = async () => {
       await ensureAndroidNotificationChannel();
+      if (deferPermissionRequest) {
+        return;
+      }
       const permission = await requestFcmPermission();
       if (cancelled) return;
 
@@ -112,7 +125,7 @@ export function useFirebaseMessaging(
       unsubscribeForeground();
       authListener.subscription.unsubscribe();
     };
-  }, [refreshToken, syncTokenToSupabase]);
+  }, [refreshToken, syncTokenToSupabase, deferPermissionRequest]);
 
   return {
     fcmToken: fcmTokenRef.current,

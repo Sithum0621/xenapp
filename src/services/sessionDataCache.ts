@@ -11,9 +11,14 @@ export const SessionCacheKeys = {
   TEACHER_TODAY_SCHEDULE: 'teacher:today-schedule',
   TEACHER_TIMETABLE: 'teacher:timetable',
   TEACHER_WALLET: 'teacher:wallet',
+  PARENT_STUDENTS: 'parent:students',
+  PARENT_COMMUNITY_CHAT: 'parent:community-chat',
 } as const;
 
-export type SessionCacheKey = (typeof SessionCacheKeys)[keyof typeof SessionCacheKeys];
+export type SessionCacheKey =
+  | (typeof SessionCacheKeys)[keyof typeof SessionCacheKeys]
+  | `parent:group-chats:${string}`
+  | `parent:classes:${string}`;
 
 const TEACHER_DASHBOARD_KEYS: SessionCacheKey[] = [
   SessionCacheKeys.TEACHER_DASHBOARD_OVERVIEW,
@@ -35,6 +40,14 @@ type InvalidationListener = (key: SessionCacheKey | '*') => void;
 const cache = new Map<SessionCacheKey, CacheEntry<unknown>>();
 const inflight = new Map<SessionCacheKey, Promise<unknown>>();
 const listeners = new Set<InvalidationListener>();
+
+export function parentGroupChatsCacheKey(studentUserId: string): SessionCacheKey {
+  return `parent:group-chats:${studentUserId.trim()}`;
+}
+
+export function parentClassesCacheKey(studentUserId: string): SessionCacheKey {
+  return `parent:classes:${studentUserId.trim()}`;
+}
 
 function notifyInvalidation(key: SessionCacheKey | '*') {
   for (const listener of listeners) {
@@ -79,6 +92,18 @@ export function invalidateSessionCache(keys?: SessionCacheKey | SessionCacheKey[
 /** Mark teacher dashboard list/overview caches stale after local mutations. */
 export function invalidateTeacherDashboardCaches(keys?: SessionCacheKey | SessionCacheKey[]) {
   invalidateSessionCache(keys ?? TEACHER_DASHBOARD_KEYS);
+}
+
+/** Mark parent dashboard caches stale (students, classes, chats). */
+export function invalidateParentDashboardCaches() {
+  for (const key of cache.keys()) {
+    if (!key.startsWith('parent:')) continue;
+    const entry = cache.get(key);
+    if (entry) {
+      entry.isFresh = false;
+    }
+    notifyInvalidation(key);
+  }
 }
 
 export function clearSessionDataCache() {

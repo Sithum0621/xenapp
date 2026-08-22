@@ -1,4 +1,5 @@
 import type { GroupChatMessage } from '@/src/services/groupChatApi';
+import { SessionCacheKeys, sessionCacheGetOrFetch } from '@/src/services/sessionDataCache';
 import { supabase } from '@/src/services/supabaseClient';
 
 import { APP_COMMUNITY_TITLE, normalizeCommunityTitle } from '@/src/constants/brand';
@@ -51,6 +52,14 @@ export async function fetchCommunityChatSummary(): Promise<CommunityChatPreview>
   } catch {
     return fallback;
   }
+}
+
+export function getCommunityChatSummaryCached(options?: { force?: boolean }) {
+  return sessionCacheGetOrFetch(
+    SessionCacheKeys.PARENT_COMMUNITY_CHAT,
+    () => fetchCommunityChatSummary(),
+    { force: options?.force },
+  );
 }
 
 export async function fetchCommunityChatMessages(): Promise<

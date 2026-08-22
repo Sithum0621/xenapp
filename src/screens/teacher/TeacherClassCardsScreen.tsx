@@ -2,27 +2,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import DashboardScreenShell from '@/src/components/layout/DashboardScreenShell';
 import { KeyboardAwareScrollView } from '@/src/components/layout/KeyboardAwareScrollView';
-import TeacherClassCardA4SheetPreview from '@/src/components/teacher/TeacherClassCardA4SheetPreview';
 import TeacherClassCardDefaultPreview, {
   TeacherClassCardQrZoneOverlay,
 } from '@/src/components/teacher/TeacherClassCardDefaultPreview';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
+import { formatContactNumber } from '@/src/services/studentClassCardApi';
 import {
-  loadTeacherClassCardPdfFiles,
-  saveTeacherClassCardPdfFile,
-  type TeacherClassCardPdfFile,
-} from '@/src/services/teacherClassCardPdfFilesStore';
+  classCardQrPayloadForStudent,
+  fetchClassCardStudentsForGroup,
+  lookupClassCardStudentByMobile,
+  type ClassCardStudentRow,
+} from '@/src/services/teacherClassCardStudentsApi';
 import {
   generateTeacherClassCardSheetPdf,
+  generateTeacherClassCardSinglePdf,
   shareClassCardPdf,
+  type TeacherClassCardSlot,
 } from '@/src/services/teacherClassCardSheetPdf';
-import { mintTeacherClassCardTokens, type IssuedClassCard } from '@/src/services/teacherClassCardTokenApi';
+import { useSessionCachedQuery } from '@/src/hooks/useSessionCachedQuery';
+import { SessionCacheKeys } from '@/src/services/sessionDataCache';
+import {
+  fetchTeacherDashboardOverview,
+  type TeacherDashboardClassRow,
+} from '@/src/services/teacherDashboardApi';
 import {
   loadTeacherClassCardTemplate,
   removeTeacherClassCardSide,
@@ -30,9 +38,11 @@ import {
   type TeacherClassCardSide,
 } from '@/src/services/teacherClassCardTemplateApi';
 import { Text } from '@/src/theme/Text';
+import { TextInput } from '@/src/theme/TextInput';
 import { FontFamily } from '@/src/theme/fonts';
 import { PAGE_CONTENT_BOTTOM, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 import { appAlert } from '@/src/utils/appAlert';
+import { parseSriLankaMobile, sanitizeSriLankaMobileInput } from '@/src/utils/sriLankaMobile';
 
 const BRAND_BLUE = '#041830';
 const BRAND_BLUE_DARK = '#00101F';
@@ -40,10 +50,8 @@ const TEXT_MUTED = '#64748B';
 const BORDER = '#E2E8F0';
 const SURFACE = '#FFFFFF';
 const CARD_ASPECT = 1.586;
-const GENERATE_BATCH = 4;
-const MAX_PAGES = 20;
 
-type ScreenView = 'home' | 'design';
+type ScreenView = 'home' | 'design' | 'generate';
 
 export default function TeacherClassCardsScreen() {
   const { t } = useTranslation();
@@ -52,12 +60,19 @@ export default function TeacherClassCardsScreen() {
     t(`teacherDashboard.overview.${k}`, opts);
   const [view, setView] = useState<ScreenView>('home');
 
+  const screenTitle =
+    view === 'design'
+      ? ov('ownClassCardsAddNewDesign')
+      : view === 'generate'
+        ? ov('ownClassCardsGenerate')
+        : ov('ownClassCardsTitle');
+
   return (
     <DashboardScreenShell
       showBack
-      title={view === 'design' ? ov('ownClassCardsAddNewDesign') : ov('ownClassCardsTitle')}
+      title={screenTitle}
       onBack={() => {
-        if (view === 'design') {
+        if (view === 'design' || view === 'generate') {
           setView('home');
           return;
         }
@@ -65,7 +80,13 @@ export default function TeacherClassCardsScreen() {
       }}
       padContent={false}>
       {view === 'home' ? (
-        <HomeView ov={ov} onAddDesign={() => setView('design')} />
+        <HomeView
+          ov={ov}
+          onAddDesign={() => setView('design')}
+          onGenerate={() => setView('generate')}
+        />
+      ) : view === 'generate' ? (
+        <GenerateView ov={ov} />
       ) : (
         <DesignEditor ov={ov} />
       )}
@@ -76,66 +97,12 @@ export default function TeacherClassCardsScreen() {
 function HomeView({
   ov,
   onAddDesign,
+  onGenerate,
 }: {
   ov: (k: string, opts?: Record<string, unknown>) => string;
   onAddDesign: () => void;
+  onGenerate: () => void;
 }) {
-  const [pages, setPages] = useState(1);
-  const [frontUrl, setFrontUrl] = useState<string | null>(null);
-  const [backUrl, setBackUrl] = useState<string | null>(null);
-  const [previewReady, setPreviewReady] = useState(false);
-  const [generateBusy, setGenerateBusy] = useState(false);
-  const [issuedCards, setIssuedCards] = useState<IssuedClassCard[]>([]);
-  const [pdfFiles, setPdfFiles] = useState<TeacherClassCardPdfFile[]>([]);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const [template, files] = await Promise.all([
-        loadTeacherClassCardTemplate(),
-        loadTeacherClassCardPdfFiles(),
-      ]);
-      if (cancelled) return;
-      if (template.ok) {
-        setFrontUrl(template.template.frontUrl);
-        setBackUrl(template.template.backUrl);
-      }
-      setPdfFiles(files);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const totalCards = pages * GENERATE_BATCH;
-  const changePages = (delta: number) => {
-    setPages((prev) => Math.min(MAX_PAGES, Math.max(1, prev + delta)));
-  };
-
-  const downloadPdfFile = async (file: TeacherClassCardPdfFile) => {
-    setDownloadingId(file.id);
-    const res = await generateTeacherClassCardSheetPdf({
-      pages: file.pages,
-      frontUrl,
-      backUrl,
-      qrLabel: ov('ownClassCardsQrZone'),
-      title: file.fileName,
-      qrUrls: file.qrUrls,
-    });
-    setDownloadingId(null);
-    if (!res.ok) {
-      appAlert(ov('ownClassCardsTitle'), res.error || ov('ownClassCardsPdfFail'));
-      return;
-    }
-    if (res.fileUri) {
-      const shared = await shareClassCardPdf(res.fileUri, file.fileName);
-      if (!shared) {
-        appAlert(ov('ownClassCardsTitle'), ov('ownClassCardsPdfFail'));
-      }
-    }
-  };
-
   return (
     <KeyboardAwareScrollView
       contentContainerStyle={styles.scroll}
@@ -151,169 +118,391 @@ function HomeView({
         <Text style={styles.hubBtnText}>{ov('ownClassCardsAddNewDesign')}</Text>
       </Pressable>
 
-      <View style={styles.hubBtnSecondaryStatic}>
-        <View style={[styles.hubIcon, styles.hubIconSecondary]}>
-          <Ionicons name="layers-outline" size={20} color={BRAND_BLUE} />
-        </View>
-        <View style={styles.generateCopy}>
-          <Text style={styles.hubBtnTextSecondary}>{ov('ownClassCardsGenerate')}</Text>
-          <Text style={styles.generateHint}>
-            {ov('ownClassCardsGenerateHint', { count: GENERATE_BATCH })}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.intro}>{ov('ownClassCardsGenerateSheetHint')}</Text>
-
-      <View style={styles.generateLayout}>
-        <View style={styles.sheetCol}>
-          {previewReady ? (
-            <>
-              <Text style={styles.previewLabel}>{ov('ownClassCardsGeneratePreviewLabel')}</Text>
-              <TeacherClassCardA4SheetPreview
-                frontUrl={frontUrl}
-                backUrl={backUrl}
-                qrZoneLabel={ov('ownClassCardsQrZone')}
-                qrUrls={issuedCards.slice(0, GENERATE_BATCH).map((card) => card.qrUrl)}
-              />
-            </>
-          ) : (
-            <View style={styles.previewPlaceholder}>
-              <Text style={styles.previewPlaceholderText}>
-                {ov('ownClassCardsGenerateAwaiting')}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.controlsCol}>
-          <Text style={styles.controlLabel}>{ov('ownClassCardsGeneratePages')}</Text>
-          <View style={styles.stepper}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={ov('ownClassCardsGenerateMinus')}
-              onPress={() => changePages(-1)}
-              disabled={pages <= 1}
-              style={({ pressed }) => [
-                styles.stepBtn,
-                pressed && pages > 1 && styles.hubBtnPressed,
-                pages <= 1 && styles.addBtnDisabled,
-              ]}>
-              <Ionicons name="remove" size={18} color={BRAND_BLUE_DARK} />
-            </Pressable>
-            <Text style={styles.stepValue}>{pages}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={ov('ownClassCardsGeneratePlus')}
-              onPress={() => changePages(1)}
-              disabled={pages >= MAX_PAGES}
-              style={({ pressed }) => [
-                styles.stepBtn,
-                pressed && pages < MAX_PAGES && styles.hubBtnPressed,
-                pages >= MAX_PAGES && styles.addBtnDisabled,
-              ]}>
-              <Ionicons name="add" size={18} color={BRAND_BLUE_DARK} />
-            </Pressable>
-          </View>
-          <Text style={styles.controlLabel}>{ov('ownClassCardsGenerateTotal')}</Text>
-          <Text style={styles.totalValue}>{totalCards}</Text>
-        </View>
-      </View>
-
       <Pressable
         accessibilityRole="button"
-        disabled={generateBusy}
-        onPress={() => {
-          void (async () => {
-            setGenerateBusy(true);
-            try {
-              const minted = await mintTeacherClassCardTokens(totalCards);
-              if (!minted.ok) {
-                appAlert(ov('ownClassCardsTitle'), minted.error || ov('ownClassCardsQrMintFail'));
-                return;
-              }
-              const saved = await saveTeacherClassCardPdfFile({
-                pages,
-                cardCount: totalCards,
-                qrUrls: minted.cards.map((card) => card.qrUrl),
-              });
-              if (!saved.ok) {
-                appAlert(ov('ownClassCardsTitle'), saved.error);
-                return;
-              }
-              setIssuedCards(minted.cards);
-              setPreviewReady(true);
-              setPdfFiles((prev) => [saved.file, ...prev.filter((f) => f.id !== saved.file.id)]);
-            } catch (e) {
-              appAlert(
-                ov('ownClassCardsTitle'),
-                e instanceof Error ? e.message : ov('ownClassCardsQrMintFail'),
-              );
-            } finally {
-              setGenerateBusy(false);
-            }
-          })();
-        }}
-        style={({ pressed }) => [
-          styles.hubBtn,
-          pressed && !generateBusy && styles.hubBtnPressed,
-          generateBusy && styles.addBtnDisabled,
-        ]}>
-        {generateBusy ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Ionicons name="grid-outline" size={18} color="#FFFFFF" />
-        )}
-        <Text style={styles.hubBtnText}>{ov('ownClassCardsGenerateAction')}</Text>
+        accessibilityLabel={ov('ownClassCardsGenerate')}
+        onPress={onGenerate}
+        style={({ pressed }) => [styles.hubBtnOutline, pressed && styles.hubBtnPressed]}>
+        <View style={[styles.hubIcon, styles.hubIconSecondary]}>
+          <Ionicons name="id-card-outline" size={20} color={BRAND_BLUE} />
+        </View>
+        <Text style={styles.hubBtnTextSecondary}>{ov('ownClassCardsGenerate')}</Text>
       </Pressable>
+    </KeyboardAwareScrollView>
+  );
+}
 
-      <View style={styles.filesSection}>
-        <Text style={styles.previewLabel}>{ov('ownClassCardsGeneratedFiles')}</Text>
-        {pdfFiles.length === 0 ? (
-          <Text style={styles.filesEmpty}>{ov('ownClassCardsGeneratedFilesEmpty')}</Text>
+type GenerateScope = 'all' | 'one';
+
+function GenerateView({
+  ov,
+}: {
+  ov: (k: string, opts?: Record<string, unknown>) => string;
+}) {
+  const { data: overviewResult, loading: classesLoading } = useSessionCachedQuery(
+    SessionCacheKeys.TEACHER_DASHBOARD_OVERVIEW,
+    () => fetchTeacherDashboardOverview(),
+    { shouldCache: (res) => !res.error && res.overview != null },
+  );
+
+  const classes = overviewResult?.overview?.classes ?? [];
+  const [classQuery, setClassQuery] = useState('');
+  const [classPickerOpen, setClassPickerOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<TeacherDashboardClassRow | null>(null);
+  const [scope, setScope] = useState<GenerateScope>('all');
+  const [mobile, setMobile] = useState('');
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [foundStudent, setFoundStudent] = useState<ClassCardStudentRow | null>(null);
+  const [generateBusy, setGenerateBusy] = useState(false);
+
+  const classKey = (row: TeacherDashboardClassRow) => `${row.source}:${row.id}`;
+
+  const filteredClasses = useMemo(() => {
+    const q = classQuery.trim().toLowerCase();
+    if (!q) return classes;
+    return classes.filter(
+      (row) =>
+        row.name.toLowerCase().includes(q) ||
+        (row.instituteName ?? '').toLowerCase().includes(q),
+    );
+  }, [classes, classQuery]);
+
+  const pickClass = (row: TeacherDashboardClassRow) => {
+    setSelectedClass(row);
+    setClassQuery(row.name);
+    setClassPickerOpen(false);
+    setMobile('');
+    setFoundStudent(null);
+  };
+
+  const onClassQueryChange = (value: string) => {
+    setClassQuery(value);
+    setClassPickerOpen(true);
+    if (selectedClass && value.trim() !== selectedClass.name.trim()) {
+      setSelectedClass(null);
+      setMobile('');
+      setFoundStudent(null);
+    }
+  };
+
+  const searchErrorMessage = (code: string | undefined) => {
+    if (code === 'student_not_in_group') return ov('ownClassCardsStudentNotInGroup');
+    if (code === 'invalid_username') return ov('ownClassCardsStudentNotFound');
+    return ov('ownClassCardsStudentNotFound');
+  };
+
+  const buildSlots = useCallback(
+    (rows: ClassCardStudentRow[]): TeacherClassCardSlot[] => {
+      if (!selectedClass) return [];
+      return rows.map((row) => ({
+        qrPayload: classCardQrPayloadForStudent(
+          selectedClass.source,
+          selectedClass.id,
+          row.studentUserId,
+        ),
+        studentName: row.fullName,
+        mobileNumber: row.mobileNumber ? formatContactNumber(row.mobileNumber) : undefined,
+      }));
+    },
+    [selectedClass],
+  );
+
+  const runPdf = useCallback(
+    async (cards: TeacherClassCardSlot[], title: string) => {
+      const template = await loadTeacherClassCardTemplate();
+      if (!template.ok) {
+        appAlert(ov('ownClassCardsTitle'), template.error);
+        return false;
+      }
+      const res =
+        cards.length === 1
+          ? await generateTeacherClassCardSinglePdf({
+              frontUrl: template.template.frontUrl,
+              backUrl: template.template.backUrl,
+              qrLabel: ov('ownClassCardsQrZone'),
+              title,
+              card: cards[0],
+            })
+          : await generateTeacherClassCardSheetPdf({
+              frontUrl: template.template.frontUrl,
+              backUrl: template.template.backUrl,
+              qrLabel: ov('ownClassCardsQrZone'),
+              title,
+              cards,
+            });
+      if (!res.ok) {
+        appAlert(ov('ownClassCardsTitle'), res.error || ov('ownClassCardsPdfFail'));
+        return false;
+      }
+      if (res.fileUri) {
+        const shared = await shareClassCardPdf(res.fileUri, title);
+        if (!shared) {
+          appAlert(ov('ownClassCardsTitle'), ov('ownClassCardsPdfFail'));
+          return false;
+        }
+      }
+      return true;
+    },
+    [ov],
+  );
+
+  const generateAllForClass = async () => {
+    if (!selectedClass) return;
+    setGenerateBusy(true);
+    try {
+      const { rows, error } = await fetchClassCardStudentsForGroup(
+        selectedClass.source,
+        selectedClass.id,
+      );
+      if (error) {
+        appAlert(ov('ownClassCardsTitle'), error);
+        return;
+      }
+      if (rows.length === 0) {
+        appAlert(ov('ownClassCardsTitle'), ov('ownClassCardsNoStudentsInClass'));
+        return;
+      }
+      await runPdf(buildSlots(rows), `${selectedClass.name}-class-cards`);
+    } finally {
+      setGenerateBusy(false);
+    }
+  };
+
+  const searchStudent = async () => {
+    if (!selectedClass) return;
+    const phone = parseSriLankaMobile(mobile);
+    if (!phone) {
+      appAlert(ov('ownClassCardsTitle'), ov('ownClassCardsStudentNotFound'));
+      return;
+    }
+    setSearchBusy(true);
+    setFoundStudent(null);
+    try {
+      const { row, error } = await lookupClassCardStudentByMobile(
+        selectedClass.source,
+        selectedClass.id,
+        phone,
+      );
+      if (!row) {
+        appAlert(ov('ownClassCardsTitle'), searchErrorMessage(error));
+        return;
+      }
+      setFoundStudent(row);
+    } finally {
+      setSearchBusy(false);
+    }
+  };
+
+  const generateOneCard = async () => {
+    if (!selectedClass || !foundStudent) return;
+    setGenerateBusy(true);
+    try {
+      const safeName = foundStudent.fullName.replace(/[^\w\s-]/g, '').trim() || 'student';
+      await runPdf(buildSlots([foundStudent]), `${safeName}-class-card`);
+    } finally {
+      setGenerateBusy(false);
+    }
+  };
+
+  return (
+    <KeyboardAwareScrollView
+      contentContainerStyle={styles.scroll}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled">
+      <View style={styles.sectionBlock}>
+        <Text style={styles.sectionTitle}>{ov('ownClassCardsSelectClass')}</Text>
+        <Text style={styles.sectionHint}>{ov('ownClassCardsSearchClassHint')}</Text>
+
+        {classesLoading && classes.length === 0 ? (
+          <View style={styles.inlineLoader}>
+            <ActivityIndicator color={BRAND_BLUE} />
+          </View>
         ) : (
-          pdfFiles.map((file) => {
-            const created = new Date(file.createdAt);
-            const when = Number.isNaN(created.getTime()) ? file.createdAt : created.toLocaleString();
-            const busy = downloadingId === file.id;
-            return (
-              <View key={file.id} style={styles.fileRow}>
-                <View style={styles.fileIcon}>
-                  <Ionicons name="document-text-outline" size={22} color={BRAND_BLUE} />
-                </View>
-                <View style={styles.fileCopy}>
-                  <Text style={styles.fileName} numberOfLines={1}>
-                    {file.fileName}
-                  </Text>
-                  <Text style={styles.fileMeta} numberOfLines={1}>
-                    {ov('ownClassCardsGeneratedFileMeta', {
-                      count: file.cardCount,
-                      pages: file.pages,
-                      when,
-                    })}
-                  </Text>
-                </View>
+          <View style={styles.comboWrap}>
+            <View style={styles.comboInputWrap}>
+              <Ionicons name="search-outline" size={18} color={TEXT_MUTED} style={styles.comboIcon} />
+              <TextInput
+                value={classQuery}
+                onChangeText={onClassQueryChange}
+                onFocus={() => setClassPickerOpen(true)}
+                placeholder={ov('ownClassCardsSearchClassPlaceholder')}
+                placeholderTextColor={TEXT_MUTED}
+                accessibilityLabel={ov('ownClassCardsSelectClass')}
+                style={styles.comboInput}
+              />
+              {classQuery.length > 0 ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={ov('ownClassCardsDownloadPdf')}
-                  disabled={busy}
-                  onPress={() => void downloadPdfFile(file)}
+                  accessibilityLabel={ov('classesSearchClear')}
+                  onPress={() => {
+                    setClassQuery('');
+                    setSelectedClass(null);
+                    setMobile('');
+                    setFoundStudent(null);
+                    setClassPickerOpen(true);
+                  }}
+                  hitSlop={8}
+                  style={styles.comboClear}>
+                  <Ionicons name="close-circle" size={18} color={TEXT_MUTED} />
+                </Pressable>
+              ) : null}
+            </View>
+
+            {classPickerOpen && filteredClasses.length > 0 ? (
+              <View style={styles.comboList}>
+                {filteredClasses.map((row) => {
+                  const selected = selectedClass ? classKey(selectedClass) === classKey(row) : false;
+                  return (
+                    <Pressable
+                      key={classKey(row)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => pickClass(row)}
+                      style={({ pressed }) => [
+                        styles.comboItem,
+                        selected && styles.comboItemSelected,
+                        pressed && styles.hubBtnPressed,
+                      ]}>
+                      <Text style={styles.comboItemTitle} numberOfLines={2}>
+                        {row.name}
+                      </Text>
+                      <Text style={styles.comboItemMeta}>
+                        {ov('ownClassCardsStudentCount', { count: row.studentCount })}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : classPickerOpen && classQuery.trim() && filteredClasses.length === 0 ? (
+              <Text style={styles.emptyHint}>{ov('classesSearchEmptyTitle')}</Text>
+            ) : null}
+          </View>
+        )}
+      </View>
+
+      {selectedClass ? (
+        <>
+          <View style={styles.sectionBlock}>
+            <Text style={styles.sectionTitle}>{ov('ownClassCardsGenerateScope')}</Text>
+            <Text style={styles.sectionHint}>{ov('ownClassCardsGenerateScopeHint')}</Text>
+            <View style={styles.scopeRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: scope === 'all' }}
+                onPress={() => {
+                  setScope('all');
+                  setMobile('');
+                  setFoundStudent(null);
+                }}
+                style={[styles.scopeChip, scope === 'all' && styles.scopeChipSelected]}>
+                <Text style={[styles.scopeChipText, scope === 'all' && styles.scopeChipTextSelected]}>
+                  {ov('ownClassCardsGenerateAllStudents')}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: scope === 'one' }}
+                onPress={() => setScope('one')}
+                style={[styles.scopeChip, scope === 'one' && styles.scopeChipSelected]}>
+                <Text style={[styles.scopeChipText, scope === 'one' && styles.scopeChipTextSelected]}>
+                  {ov('ownClassCardsGenerateOneStudent')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {scope === 'all' ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={ov('ownClassCardsGenerateAllA11y')}
+              disabled={generateBusy}
+              onPress={() => void generateAllForClass()}
+              style={({ pressed }) => [
+                styles.hubBtn,
+                pressed && !generateBusy && styles.hubBtnPressed,
+                generateBusy && styles.addBtnDisabled,
+              ]}>
+              {generateBusy ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Ionicons name="print-outline" size={20} color="#FFFFFF" />
+              )}
+              <Text style={styles.hubBtnText}>
+                {generateBusy ? ov('ownClassCardsGenerating') : ov('ownClassCardsGenerateAllAction')}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>{ov('ownClassCardsSearchMobile')}</Text>
+              <Text style={styles.sectionHint}>{ov('ownClassCardsSearchMobileHint')}</Text>
+
+              <View style={styles.searchRow}>
+                <TextInput
+                  value={mobile}
+                  onChangeText={(v) => setMobile(sanitizeSriLankaMobileInput(v))}
+                  placeholder="07XXXXXXXX"
+                  placeholderTextColor={TEXT_MUTED}
+                  keyboardType="phone-pad"
+                  accessibilityLabel={ov('ownClassCardsSearchMobile')}
+                  style={styles.searchInput}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={ov('ownClassCardsSearchAction')}
+                  disabled={searchBusy || generateBusy}
+                  onPress={() => void searchStudent()}
                   style={({ pressed }) => [
-                    styles.fileDownloadBtn,
-                    pressed && !busy && styles.hubBtnPressed,
-                    busy && styles.addBtnDisabled,
+                    styles.searchBtn,
+                    pressed && !searchBusy && styles.hubBtnPressed,
+                    (searchBusy || generateBusy) && styles.addBtnDisabled,
                   ]}>
-                  {busy ? (
-                    <ActivityIndicator color={BRAND_BLUE} />
+                  {searchBusy ? (
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Ionicons name="download-outline" size={20} color={BRAND_BLUE} />
+                    <Ionicons name="search-outline" size={20} color="#FFFFFF" />
                   )}
                 </Pressable>
               </View>
-            );
-          })
-        )}
-      </View>
+
+              {foundStudent ? (
+                <>
+                  <View style={styles.studentRow}>
+                    <View style={styles.studentCopy}>
+                      <Text style={styles.studentName} numberOfLines={1}>
+                        {foundStudent.fullName}
+                      </Text>
+                      <Text style={styles.studentMeta} numberOfLines={1}>
+                        {formatContactNumber(foundStudent.mobileNumber)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={ov('ownClassCardsGenerateCardAction')}
+                    disabled={generateBusy}
+                    onPress={() => void generateOneCard()}
+                    style={({ pressed }) => [
+                      styles.hubBtn,
+                      pressed && !generateBusy && styles.hubBtnPressed,
+                      generateBusy && styles.addBtnDisabled,
+                    ]}>
+                    {generateBusy ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="id-card-outline" size={20} color="#FFFFFF" />
+                    )}
+                    <Text style={styles.hubBtnText}>
+                      {generateBusy ? ov('ownClassCardsGenerating') : ov('ownClassCardsGenerateCardAction')}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Text style={styles.emptyHint}>{ov('ownClassCardsSearchFirst')}</Text>
+              )}
+            </View>
+          )}
+        </>
+      ) : null}
     </KeyboardAwareScrollView>
   );
 }
@@ -426,10 +615,12 @@ function DesignEditor({
               ) : null}
             </View>
           ) : (
-            <TeacherClassCardDefaultPreview
-              side={previewSide}
-              qrZoneLabel={ov('ownClassCardsQrZone')}
-            />
+            <View style={StyleSheet.absoluteFill}>
+              <TeacherClassCardDefaultPreview
+                side={previewSide}
+                qrZoneLabel={ov('ownClassCardsQrZone')}
+              />
+            </View>
           )}
         </View>
         <View style={styles.sideTabs}>
@@ -543,11 +734,21 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  hubBtnSecondaryStatic: {
+  hubBtnPressed: { opacity: 0.88 },
+  hubIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hubBtnText: { flex: 1, color: '#FFFFFF', fontSize: 16, fontFamily: FontFamily.bold },
+  hubBtnOutline: {
     minHeight: 56,
     borderRadius: 16,
     backgroundColor: SURFACE,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.5,
     borderColor: BORDER,
     flexDirection: 'row',
     alignItems: 'center',
@@ -555,32 +756,113 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  previewPlaceholder: {
-    minHeight: 120,
+  hubIconSecondary: { backgroundColor: '#E8F1FF' },
+  hubBtnTextSecondary: { flex: 1, color: BRAND_BLUE_DARK, fontSize: 16, fontFamily: FontFamily.bold },
+  sectionBlock: { gap: 10 },
+  sectionTitle: { fontSize: 16, fontFamily: FontFamily.bold, color: BRAND_BLUE_DARK },
+  sectionHint: { fontSize: 13, lineHeight: 18, fontFamily: FontFamily.regular, color: TEXT_MUTED },
+  inlineLoader: { paddingVertical: 20, alignItems: 'center' },
+  classChipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  classChip: {
+    minWidth: '47%',
+    flexGrow: 1,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: SURFACE,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 4,
+  },
+  classChipSelected: {
+    borderColor: BRAND_BLUE,
+    backgroundColor: '#E8F1FF',
+  },
+  classChipText: { fontSize: 14, fontFamily: FontFamily.bold, color: BRAND_BLUE_DARK },
+  classChipTextSelected: { color: BRAND_BLUE },
+  classChipMeta: { fontSize: 11, fontFamily: FontFamily.regular, color: TEXT_MUTED },
+  comboWrap: { gap: 8 },
+  comboInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 14,
+    backgroundColor: SURFACE,
+    minHeight: 48,
+    paddingHorizontal: 12,
+  },
+  comboIcon: { marginRight: 8 },
+  comboInput: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 16,
+    color: BRAND_BLUE_DARK,
+    minHeight: 44,
+    paddingVertical: 8,
+  },
+  comboClear: { padding: 4 },
+  comboList: {
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 14,
+    backgroundColor: SURFACE,
+    overflow: 'hidden',
+    maxHeight: 220,
+  },
+  comboItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: BORDER,
+    gap: 2,
+  },
+  comboItemSelected: { backgroundColor: '#E8F1FF' },
+  comboItemTitle: { fontSize: 14, fontFamily: FontFamily.bold, color: BRAND_BLUE_DARK },
+  comboItemMeta: { fontSize: 11, fontFamily: FontFamily.regular, color: TEXT_MUTED },
+  scopeRow: { flexDirection: 'row', gap: 8 },
+  scopeChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
     borderRadius: 12,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#BFDBFE',
-    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: SURFACE,
+  },
+  scopeChipSelected: {
+    borderColor: BRAND_BLUE,
+    backgroundColor: '#E8F1FF',
+  },
+  scopeChipText: { fontSize: 14, fontFamily: FontFamily.bold, color: TEXT_MUTED },
+  scopeChipTextSelected: { color: BRAND_BLUE_DARK },
+  emptyHint: { fontSize: 13, lineHeight: 18, fontFamily: FontFamily.regular, color: TEXT_MUTED },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: SURFACE,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: BRAND_BLUE_DARK,
+  },
+  searchBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: BRAND_BLUE,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
   },
-  previewPlaceholderText: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontFamily: FontFamily.regular,
-    color: TEXT_MUTED,
-    textAlign: 'center',
-  },
-  filesSection: { gap: 10 },
-  filesEmpty: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontFamily: FontFamily.regular,
-    color: TEXT_MUTED,
-  },
-  fileRow: {
+  studentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -591,17 +873,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
   },
-  fileIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#E8F1FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fileCopy: { flex: 1, minWidth: 0, gap: 2 },
-  fileName: { fontSize: 13, fontFamily: FontFamily.bold, color: BRAND_BLUE_DARK },
-  fileMeta: { fontSize: 12, fontFamily: FontFamily.regular, color: TEXT_MUTED },
+  studentCopy: { flex: 1, minWidth: 0, gap: 2 },
+  studentName: { fontSize: 14, fontFamily: FontFamily.bold, color: BRAND_BLUE_DARK },
+  studentMeta: { fontSize: 12, fontFamily: FontFamily.regular, color: TEXT_MUTED },
   fileDownloadBtn: {
     width: 40,
     height: 40,
@@ -610,50 +884,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hubBtnPressed: { opacity: 0.88 },
-  hubIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hubIconSecondary: { backgroundColor: '#E8F1FF' },
-  hubBtnText: { flex: 1, color: '#FFFFFF', fontSize: 16, fontFamily: FontFamily.bold },
-  hubBtnTextSecondary: { color: BRAND_BLUE_DARK, fontSize: 16, fontFamily: FontFamily.bold },
-  generateCopy: { flex: 1, gap: 4, minWidth: 0, paddingTop: 2 },
-  generateHint: { fontSize: 13, lineHeight: 18, fontFamily: FontFamily.regular, color: TEXT_MUTED },
-  generateLayout: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  sheetCol: { flex: 1, minWidth: 0, gap: 8 },
-  controlsCol: { width: 108, gap: 8, paddingTop: 22 },
-  controlLabel: { fontSize: 12, fontFamily: FontFamily.bold, color: TEXT_MUTED },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: SURFACE,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: BORDER,
-    padding: 4,
-  },
-  stepBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#E8F1FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepValue: {
-    minWidth: 22,
-    textAlign: 'center',
-    fontSize: 16,
-    fontFamily: FontFamily.bold,
-    color: BRAND_BLUE_DARK,
-  },
-  totalValue: { fontSize: 28, lineHeight: 32, fontFamily: FontFamily.black, color: BRAND_BLUE_DARK },
   intro: { fontSize: 14, lineHeight: 20, fontFamily: FontFamily.regular, color: TEXT_MUTED },
   notice: {
     flexDirection: 'row',
@@ -684,8 +914,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#F7FAFF',
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BORDER,
   },

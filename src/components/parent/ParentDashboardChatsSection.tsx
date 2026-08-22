@@ -14,13 +14,17 @@ import ScrollFriendlyPressable from '@/src/components/layout/ScrollFriendlyPress
 import ChatListRow from '@/src/components/parent/chat/ChatListRow';
 import CommunityChatListRow from '@/src/components/community/CommunityChatListRow';
 import {
-  fetchCommunityChatSummary,
+  getCommunityChatSummaryCached,
   type CommunityChatPreview,
 } from '@/src/services/communityChatApi';
 import {
-  fetchParentGroupChats,
+  getParentGroupChatsCached,
   type GroupChatListItem,
 } from '@/src/services/groupChatApi';
+import {
+  getSessionCacheEntry,
+  parentGroupChatsCacheKey,
+} from '@/src/services/sessionDataCache';
 import { Text } from '@/src/theme/Text';
 import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
 
@@ -61,22 +65,27 @@ function ParentDashboardChatsSection({
   const [chats, setChats] = useState<GroupChatListItem[]>([]);
   const [communityPreview, setCommunityPreview] = useState<CommunityChatPreview | null>(null);
 
-  const loadCommunity = useCallback(async () => {
-    const summary = await fetchCommunityChatSummary();
+  const loadCommunity = useCallback(async (force = false) => {
+    const summary = await getCommunityChatSummaryCached({ force });
     setCommunityPreview(summary);
   }, []);
 
-  const load = useCallback(async () => {
-    void loadCommunity();
+  const load = useCallback(async (force = false) => {
+    void loadCommunity(force);
     if (!selectedStudentId) {
       setChats([]);
       setError(null);
       setLoading(false);
       return;
     }
-    setLoading(true);
+    const chatCached = getSessionCacheEntry<
+      Awaited<ReturnType<typeof getParentGroupChatsCached>>
+    >(parentGroupChatsCacheKey(selectedStudentId));
+    if (!chatCached?.data || force) {
+      setLoading(true);
+    }
     setError(null);
-    const res = await fetchParentGroupChats(selectedStudentId);
+    const res = await getParentGroupChatsCached(selectedStudentId, { force });
     if (res.ok) {
       setChats(res.chats);
     } else {

@@ -26,6 +26,8 @@ export type GamesScheduleEvent = {
   quiz_question_count: number | null;
   quiz_choice_count: number | null;
   quiz_time_limit_minutes: number | null;
+  target_group_source?: 'institute' | 'personal' | null;
+  target_group_id?: string | null;
 };
 
 export type GamesScheduleEventsPage = {
@@ -104,6 +106,11 @@ function parseEvent(row: unknown): GamesScheduleEvent | null {
     quiz_question_count: parseOptionalInt(r.quiz_question_count),
     quiz_choice_count: parseOptionalInt(r.quiz_choice_count),
     quiz_time_limit_minutes: parseOptionalInt(r.quiz_time_limit_minutes),
+    target_group_source:
+      r.target_group_source === 'personal' || r.target_group_source === 'institute'
+        ? r.target_group_source
+        : null,
+    target_group_id: typeof r.target_group_id === 'string' ? r.target_group_id : null,
   };
 }
 

@@ -14,6 +14,7 @@ import TeacherAssignedGroupsSection from '@/src/components/teacher/TeacherAssign
 import TeacherAttendanceSection from '@/src/components/teacher/TeacherAttendanceSection';
 import TeacherDashboardOverviewSection from '@/src/components/teacher/TeacherDashboardOverviewSection';
 import DashboardSubscriptionWrapper from '@/src/components/subscription/DashboardSubscriptionWrapper';
+import PushNotificationSettingsRow from '@/src/components/push/PushNotificationSettingsRow';
 import SuperadminDevDashboardSwitcher from '@/src/components/SuperadminDevDashboardSwitcher';
 import { AppRoutes, appHref } from '@/src/navigation/AppNavigator';
 import { signOutAndReturnToLogin } from '@/src/navigation/signOutAndReturnToLogin';
@@ -157,6 +158,21 @@ export default function TeacherDashboardHome() {
 
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={t('teacherDashboard.settingsWalletA11y')}
+              onPress={() => router.push(appHref(AppRoutes.teacherWallet))}
+              style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}>
+              <View style={styles.menuItemIcon}>
+                <Ionicons name="cash-outline" size={18} color={BRAND_BLUE_DARK} />
+              </View>
+              <View style={styles.menuItemTextWrap}>
+                <Text style={styles.menuItemTitle}>{t('teacherDashboard.settingsWalletTitle')}</Text>
+                <Text style={styles.menuItemSub}>{t('teacherDashboard.settingsWalletHint')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
               onPress={() => router.push('/teacher-dashboard/settings/app-update')}
               style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}>
               <View style={styles.menuItemIcon}>
@@ -168,6 +184,10 @@ export default function TeacherDashboardHome() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
             </Pressable>
+
+            <View style={styles.menuItem}>
+              <PushNotificationSettingsRow />
+            </View>
 
             <Pressable
               accessibilityRole="button"
@@ -343,6 +363,7 @@ export default function TeacherDashboardHome() {
               <TeacherDashboardOverviewSection
                 variant="overview"
                 contentPaddingBottom={scrollBottomPadding}
+                onOpenClasses={() => setActive('classes')}
               />
             ) : active === 'classes' ? (
               <TeacherDashboardOverviewSection

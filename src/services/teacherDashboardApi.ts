@@ -300,6 +300,86 @@ export type TeacherDashboardOverviewResult = {
   partialWarning: string | null;
 };
 
+function rpcNotDeployedMessage(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes('could not find the function') ||
+    m.includes('schema cache') ||
+    m.includes('teacher_dashboard_overview')
+  );
+}
+
+function parseRpcClassRow(raw: unknown): TeacherDashboardClassRow | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const id = typeof r.id === 'string' ? r.id : null;
+  const name = typeof r.name === 'string' ? r.name : null;
+  const sourceRaw = typeof r.source === 'string' ? r.source : 'institute';
+  const source: 'institute' | 'personal' = sourceRaw === 'personal' ? 'personal' : 'institute';
+  if (!id || !name) return null;
+  const num = (v: unknown) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : Number.parseInt(String(v ?? 0), 10) || 0;
+  return {
+    id,
+    source,
+    name,
+    instituteName:
+      typeof r.institute_name === 'string' && r.institute_name.trim() ? r.institute_name.trim() : null,
+    studentCount: num(r.student_count),
+    collectedCents: num(r.collected_cents),
+    duePaymentCents: num(r.due_payment_cents),
+    amountToPayCents: num(r.amount_to_pay_cents),
+  };
+}
+
+async function fetchTeacherDashboardOverviewViaRpc(
+  billingMonth: string,
+): Promise<TeacherDashboardOverviewResult | null> {
+  const { data, error } = await supabase.rpc('teacher_dashboard_overview', {
+    p_billing_month: billingMonth,
+  });
+  if (error) {
+    if (rpcNotDeployedMessage(error.message)) return null;
+    return { overview: null, error: error.message, partialWarning: null };
+  }
+  if (!data || typeof data !== 'object') {
+    return { overview: null, error: 'Invalid dashboard response', partialWarning: null };
+  }
+
+  const r = data as Record<string, unknown>;
+  const teacherDisplayName = displayNameFromProfile(
+    String(r.teacher_first_name ?? ''),
+    String(r.teacher_last_name ?? ''),
+    String(r.teacher_full_name ?? ''),
+  );
+  const classesRaw = Array.isArray(r.classes) ? r.classes : [];
+  const classes = classesRaw
+    .map(parseRpcClassRow)
+    .filter((row): row is TeacherDashboardClassRow => row !== null);
+
+  const num = (v: unknown) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : Number.parseInt(String(v ?? 0), 10) || 0;
+
+  const smsRes = await loadTeacherSmsAccount();
+
+  return {
+    overview: {
+      teacherDisplayName,
+      billingMonth: typeof r.billing_month === 'string' ? r.billing_month.slice(0, 10) : billingMonth,
+      classes,
+      totalStudents: num(r.total_students),
+      totalIncomeCents: num(r.total_income_cents),
+      walletCents: num(r.wallet_cents),
+      teacherWalletBalanceCents: num(r.teacher_wallet_balance_cents),
+      duePaymentCents: num(r.due_payment_cents),
+      amountToPayCents: num(r.amount_to_pay_cents),
+      smsCreditBalance: smsRes.ok && smsRes.account ? smsRes.account.creditBalance : 0,
+    },
+    error: null,
+    partialWarning: null,
+  };
+}
+
 export async function fetchTeacherDashboardOverview(): Promise<TeacherDashboardOverviewResult> {
   const {
     data: { user },
@@ -309,6 +389,14 @@ export async function fetchTeacherDashboardOverview(): Promise<TeacherDashboardO
   }
 
   const billingMonth = monthStartIso();
+
+  const rpcResult = await fetchTeacherDashboardOverviewViaRpc(billingMonth);
+  if (rpcResult && !rpcResult.error && rpcResult.overview) {
+    return rpcResult;
+  }
+  if (rpcResult?.error && !rpcNotDeployedMessage(rpcResult.error)) {
+    return rpcResult;
+  }
 
   const [profileRes, groupsRes] = await Promise.all([
     loadTeacherProfileFields(user.id),

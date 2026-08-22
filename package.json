@@ -12,7 +12,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build:web": "expo export --platform web",
+    "sync:firebase-web": "node scripts/sync-firebase-web-config.mjs",
+    "build:web": "node scripts/sync-firebase-web-config.mjs && expo export --platform web",
     "lint": "expo lint"
   },
   "dependencies": {
@@ -53,6 +54,7 @@
     "expo-system-ui": "~6.0.9",
     "expo-video": "~3.0.16",
     "expo-web-browser": "~15.0.10",
+    "firebase": "^11.10.0",
     "i18next": "^26.0.8",
     "qrcode": "^1.5.4",
     "react": "19.1.0",

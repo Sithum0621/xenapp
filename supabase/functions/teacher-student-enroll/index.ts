@@ -256,6 +256,37 @@ async function annotateInTeacherClasses(
     });
 }
 
+async function studentIdsInGroup(
+  admin: ReturnType<typeof createClient>,
+  source: GroupSource,
+  groupId: string,
+  studentIds: string[],
+): Promise<Set<string>> {
+  if (studentIds.length === 0) return new Set();
+  if (source === 'personal') {
+    const { data } = await admin
+      .from('teacher_personal_roster_entries')
+      .select('student_user_id')
+      .eq('teacher_personal_group_id', groupId)
+      .in('student_user_id', studentIds);
+    return new Set(
+      (data ?? [])
+        .map((r: { student_user_id: string | null }) => r.student_user_id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0),
+    );
+  }
+  const { data } = await admin
+    .from('lecture_group_students')
+    .select('student_user_id')
+    .eq('lecture_group_id', groupId)
+    .in('student_user_id', studentIds);
+  return new Set(
+    (data ?? [])
+      .map((r: { student_user_id: string | null }) => r.student_user_id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0),
+  );
+}
+
 async function upsertStudentMobile(
   admin: ReturnType<typeof createClient>,
   studentUserId: string,
@@ -525,6 +556,44 @@ Deno.serve(async (req) => {
       if (raw.length === 0) {
         return json({ error: 'student_not_found', candidates: [] }, req, 404);
       }
+
+      if (groupSource && groupId) {
+        if (groupSource !== 'personal' && groupSource !== 'institute') {
+          return json({ error: 'invalid_group_source' }, req, 400);
+        }
+        const gate = await assertTeacherCanManageGroup(
+          admin,
+          user.id,
+          groupSource as GroupSource,
+          groupId,
+        );
+        if (!gate.ok) {
+          return json({ error: gate.error }, req, gate.status);
+        }
+        const inGroup = await studentIdsInGroup(
+          admin,
+          groupSource as GroupSource,
+          groupId,
+          raw.map((c) => c.student_user_id),
+        );
+        const filtered = raw.filter((c) => inGroup.has(c.student_user_id));
+        if (filtered.length === 0) {
+          return json({ error: 'student_not_in_group', candidates: [] }, req, 404);
+        }
+        const candidates = filtered.map((c) => ({
+          ...c,
+          in_your_classes: true,
+        }));
+        return json(
+          {
+            ok: true,
+            mobile_number: ident.phone,
+            candidates,
+          },
+          req,
+        );
+      }
+
       const candidates = await annotateInTeacherClasses(admin, user.id, raw);
       return json(
         {

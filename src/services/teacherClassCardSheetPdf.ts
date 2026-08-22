@@ -80,25 +80,46 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+export type TeacherClassCardSlot = {
+  qrPayload: string;
+  studentName?: string;
+  mobileNumber?: string;
+};
+
+function studentBackOverlayHtml(name?: string, mobile?: string): string {
+  if (!name?.trim()) return '';
+  const nameHtml = escapeHtml(name.trim());
+  const mobileHtml = mobile?.trim() ? escapeHtml(mobile.trim()) : '';
+  return `<div class="student-overlay">
+    <div class="student-name">${nameHtml}</div>
+    ${mobileHtml ? `<div class="student-mobile">${mobileHtml}</div>` : ''}
+  </div>`;
+}
+
 function defaultCardHtml(
   side: 'front' | 'back',
   markSrc: string,
   qrLabel: string,
   qrDataUri?: string,
+  slot?: TeacherClassCardSlot,
 ): string {
   const mark = `<img class="mark" src="${markSrc}" alt="" />`;
   if (side === 'front') {
+    const nameTag = slot?.studentName?.trim()
+      ? `<div class="front-name">${escapeHtml(slot.studentName.trim())}</div>`
+      : '';
     return `<div class="id-card default-card">
       <div class="bar"></div>
-      <div class="front-body">${mark}<div class="wordmark"><span class="my">My</span><span class="tuition">Tuition</span></div></div>
+      <div class="front-body">${mark}<div class="wordmark"><span class="my">My</span><span class="tuition">Tuition</span></div>${nameTag}</div>
     </div>`;
   }
   const qr = qrDataUri
     ? `<div class="qr-overlay"><img src="${qrDataUri}" alt="" /></div>`
     : `<div class="qr-zone">${escapeHtml(qrLabel)}</div>`;
+  const studentCopy = studentBackOverlayHtml(slot?.studentName, slot?.mobileNumber);
   return `<div class="id-card default-card">
     <div class="bar"></div>
-    <div class="back-body">${qr}<div class="default-back-copy"><strong>MyTuition</strong></div></div>
+    <div class="back-body">${qr}<div class="default-back-copy"><strong>MyTuition</strong>${studentCopy}</div></div>
   </div>`;
 }
 
@@ -108,33 +129,43 @@ function faceHtml(
   markSrc: string,
   qrLabel: string,
   qrDataUri?: string,
+  slot?: TeacherClassCardSlot,
 ): string {
-  if (!src) return defaultCardHtml(side, markSrc, qrLabel, qrDataUri);
+  if (!src) return defaultCardHtml(side, markSrc, qrLabel, qrDataUri, slot);
   const qr =
     side === 'back' && qrDataUri
       ? `<div class="qr-overlay"><img src="${qrDataUri}" alt="" /></div>`
       : '';
-  return `<div class="id-card"><img class="face" src="${src}" alt="" />${qr}</div>`;
+  const overlay =
+    side === 'back' ? studentBackOverlayHtml(slot?.studentName, slot?.mobileNumber) : '';
+  return `<div class="id-card"><img class="face" src="${src}" alt="" />${qr}${overlay}</div>`;
 }
 
 function buildSheetPdfHtml(input: {
-  pages: number;
   frontSrc: string | null;
   backSrc: string | null;
   markSrc: string;
   qrLabel: string;
   title: string;
-  qrDataUris: string[];
+  qrDataUris: (string | undefined)[];
+  slots: TeacherClassCardSlot[];
 }): string {
-  const pages = Math.max(1, Math.round(input.pages));
+  const totalSlots = Math.max(input.slots.length, 1);
+  const pages = Math.max(1, Math.ceil(totalSlots / CARDS_PER_SHEET));
   const sheets: string[] = [];
   for (let p = 0; p < pages; p += 1) {
     const rows: string[] = [];
     for (let i = 0; i < CARDS_PER_SHEET; i += 1) {
-      const qr = input.qrDataUris[p * CARDS_PER_SHEET + i];
+      const index = p * CARDS_PER_SHEET + i;
+      const slot = input.slots[index];
+      const qr = input.qrDataUris[index];
+      if (!slot) {
+        rows.push('<div class="row row-empty"><div class="id-card empty-slot"></div><div class="id-card empty-slot"></div></div>');
+        continue;
+      }
       rows.push(`<div class="row">
-        ${faceHtml('front', input.frontSrc, input.markSrc, input.qrLabel)}
-        ${faceHtml('back', input.backSrc, input.markSrc, input.qrLabel, qr)}
+        ${faceHtml('front', input.frontSrc, input.markSrc, input.qrLabel, undefined, slot)}
+        ${faceHtml('back', input.backSrc, input.markSrc, input.qrLabel, qr, slot)}
       </div>`);
     }
     sheets.push(`<section class="sheet">${rows.join('')}</section>`);
@@ -182,6 +213,12 @@ function buildSheetPdfHtml(input: {
     .qr-zone { border: 0.3mm dashed #94A3B8; font-size: 2.4mm; color: #64748B; }
     .qr-overlay { position: absolute; left: 4%; top: 50%; transform: translateY(-50%); padding: 1.2mm; z-index: 2; }
     .qr-overlay img { width: 100%; height: 100%; display: block; }
+    .student-overlay { position: absolute; right: 3mm; bottom: 3mm; left: 28mm; z-index: 3; background: rgba(255,255,255,0.88); padding: 1.2mm 1.6mm; border-radius: 1mm; }
+    .student-name { font-size: 3mm; font-weight: 700; color: #041830; line-height: 1.2; }
+    .student-mobile { font-size: 2.6mm; color: #64748B; margin-top: 0.5mm; }
+    .front-name { font-size: 3.2mm; font-weight: 700; color: #041830; margin-top: 1mm; }
+    .empty-slot { background: transparent; border: 0.2mm dashed #CBD5E1; }
+    .row-empty .id-card + .id-card { margin-left: ${CARD_COL_GAP_MM}mm; }
   </style>
 </head>
 <body>${sheets.join('')}</body>
@@ -260,51 +297,68 @@ function printHtmlInIframe(html: string): Promise<void> {
   });
 }
 
-export async function generateTeacherClassCardSheetPdf(input: {
-  pages: number;
+async function buildPdfFromHtml(html: string, fileBasename: string): Promise<ClassCardPdfResult> {
+  if (Platform.OS === 'web') {
+    await printHtmlInIframe(html);
+    return { ok: true, fileUri: '' };
+  }
+
+  const { uri: tempUri } = await Print.printToFileAsync({
+    html,
+    width: 595,
+    height: 842,
+  });
+  if (!tempUri) {
+    return { ok: false, error: 'PDF file was not created.', code: 'no_uri' };
+  }
+  const fileUri = await persistClassCardPdf(tempUri, fileBasename);
+  return { ok: true, fileUri };
+}
+
+async function buildCardPdfHtml(input: {
   frontUrl: string | null;
   backUrl: string | null;
   qrLabel: string;
   title: string;
-  qrUrls: string[];
+  cards: TeacherClassCardSlot[];
+}): Promise<{ html: string } | { error: string; code: string }> {
+  if (input.cards.length === 0) {
+    return { error: 'No student cards to generate.', code: 'no_cards' };
+  }
+  const qrDataUris = await Promise.all(
+    input.cards.map((card) => qrSvgDataUri(card.qrPayload)),
+  );
+  const [frontSrc, backSrc, markBase64] = await Promise.all([
+    uriToSrc(input.frontUrl),
+    uriToSrc(input.backUrl),
+    loadPngBase64(MARK),
+  ]);
+  const markSrc = `data:image/png;base64,${markBase64}`;
+  const html = buildSheetPdfHtml({
+    frontSrc,
+    backSrc,
+    markSrc,
+    qrLabel: input.qrLabel,
+    title: input.title,
+    qrDataUris,
+    slots: input.cards,
+  });
+  return { html };
+}
+
+export async function generateTeacherClassCardSheetPdf(input: {
+  frontUrl: string | null;
+  backUrl: string | null;
+  qrLabel: string;
+  title: string;
+  cards: TeacherClassCardSlot[];
 }): Promise<ClassCardPdfResult> {
   try {
-    const needed = Math.max(1, Math.round(input.pages)) * CARDS_PER_SHEET;
-    if (input.qrUrls.length < needed) {
-      return { ok: false, error: 'Unique QR codes were not generated for every card.', code: 'qr_missing' };
+    const built = await buildCardPdfHtml(input);
+    if ('error' in built) {
+      return { ok: false, error: built.error, code: built.code };
     }
-    const [frontSrc, backSrc, markBase64, qrDataUris] = await Promise.all([
-      uriToSrc(input.frontUrl),
-      uriToSrc(input.backUrl),
-      loadPngBase64(MARK),
-      Promise.all(input.qrUrls.slice(0, needed).map((url) => qrSvgDataUri(url))),
-    ]);
-    const markSrc = `data:image/png;base64,${markBase64}`;
-    const html = buildSheetPdfHtml({
-      pages: input.pages,
-      frontSrc,
-      backSrc,
-      markSrc,
-      qrLabel: input.qrLabel,
-      title: input.title,
-      qrDataUris,
-    });
-
-    if (Platform.OS === 'web') {
-      await printHtmlInIframe(html);
-      return { ok: true, fileUri: '' };
-    }
-
-    const { uri: tempUri } = await Print.printToFileAsync({
-      html,
-      width: 595,
-      height: 842,
-    });
-    if (!tempUri) {
-      return { ok: false, error: 'PDF file was not created.', code: 'no_uri' };
-    }
-    const fileUri = await persistClassCardPdf(tempUri, 'teacher-class-cards');
-    return { ok: true, fileUri };
+    return buildPdfFromHtml(built.html, 'teacher-class-cards');
   } catch (e) {
     return {
       ok: false,
@@ -312,6 +366,22 @@ export async function generateTeacherClassCardSheetPdf(input: {
       code: 'pdf_failed',
     };
   }
+}
+
+export async function generateTeacherClassCardSinglePdf(input: {
+  frontUrl: string | null;
+  backUrl: string | null;
+  qrLabel: string;
+  title: string;
+  card: TeacherClassCardSlot;
+}): Promise<ClassCardPdfResult> {
+  return generateTeacherClassCardSheetPdf({
+    frontUrl: input.frontUrl,
+    backUrl: input.backUrl,
+    qrLabel: input.qrLabel,
+    title: input.title,
+    cards: [input.card],
+  });
 }
 
 export { shareClassCardPdf };

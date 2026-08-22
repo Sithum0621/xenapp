@@ -85,9 +85,7 @@ function TeacherRegisterStudentModal({ visible, groups, onClose, onRegistered }:
                 ? 'enrollErrNetwork'
                 : code === 'unauthorized'
                   ? 'enrollErrSession'
-                  : code === 'xen_id_failed'
-                    ? 'enrollErrXenId'
-                    : 'enrollErrGeneric';
+                  : 'enrollErrGeneric';
     return gd(key);
   };
 

@@ -1,6 +1,7 @@
 import type { ProfileRole } from '@/src/navigation/AppNavigator';
 import {
   invalidateSessionCache,
+  parentGroupChatsCacheKey,
   SessionCacheKeys,
   sessionCacheGetOrFetch,
 } from '@/src/services/sessionDataCache';
@@ -107,6 +108,21 @@ export async function fetchParentGroupChats(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+export function getParentGroupChatsCached(
+  studentUserId: string,
+  options?: { force?: boolean },
+) {
+  const studentId = studentUserId.trim();
+  return sessionCacheGetOrFetch(
+    parentGroupChatsCacheKey(studentId),
+    () => fetchParentGroupChats(studentId),
+    {
+      force: options?.force,
+      shouldCache: (res) => res.ok,
+    },
+  );
 }
 
 function mapGroupChatMessageRows(data: unknown): GroupChatMessage[] {

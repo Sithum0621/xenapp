@@ -17,9 +17,11 @@ import StudentClassCard, { type StudentClassCardProps } from '@/src/components/p
 import {
   computeNextClass,
   fetchStudentClasses,
+  getStudentClassesCached,
   type NextClass,
   type StudentClass,
 } from '@/src/services/studentClassesApi';
+import { getSessionCacheEntry, parentClassesCacheKey } from '@/src/services/sessionDataCache';
 import {
   formatLkrFromCents,
   teacherNameFromGroupTitle,
@@ -134,10 +136,15 @@ export default function StudentClassesPanel({
     }
 
     const seq = ++loadSeqRef.current;
-    setLoading(true);
+    const cached = getSessionCacheEntry<Awaited<ReturnType<typeof fetchStudentClasses>>>(
+      parentClassesCacheKey(studentId),
+    );
+    if (!cached?.data && refreshNonce === 0) {
+      setLoading(true);
+    }
     setError(null);
 
-    const res = await fetchStudentClasses(studentId);
+    const res = await getStudentClassesCached(studentId, { force: refreshNonce > 0 });
     if (seq !== loadSeqRef.current) return;
 
     if (res.ok) {
@@ -148,7 +155,7 @@ export default function StudentClassesPanel({
       setError(res.error);
     }
     setLoading(false);
-  }, [studentUserId]);
+  }, [studentUserId, refreshNonce]);
 
   useEffect(() => {
     if (!isTabActive) return;

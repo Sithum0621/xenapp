@@ -1,4 +1,9 @@
 import { supabase } from '@/src/services/supabaseClient';
+import {
+  invalidateParentDashboardCaches,
+  SessionCacheKeys,
+  sessionCacheGetOrFetch,
+} from '@/src/services/sessionDataCache';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,6 +136,17 @@ export async function fetchParentStudents(): Promise<ParentStudentsResult> {
   }
 }
 
+export function getParentStudentsCached(options?: { force?: boolean }) {
+  return sessionCacheGetOrFetch(
+    SessionCacheKeys.PARENT_STUDENTS,
+    () => fetchParentStudents(),
+    {
+      force: options?.force,
+      shouldCache: (res) => res.ok,
+    },
+  );
+}
+
 // ---------------------------------------------------------------------------
 // parent_link_student(identifier)
 // ---------------------------------------------------------------------------
@@ -161,6 +177,7 @@ export async function linkParentStudent(identifier: string): Promise<LinkStudent
     if (!studentUserId) {
       return { ok: false, code: 'unknown_error', rawMessage: 'missing student_user_id in response' };
     }
+    invalidateParentDashboardCaches();
     return { ok: true, studentUserId };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -172,6 +189,7 @@ export async function unlinkParentStudent(studentUserId: string): Promise<{ ok: 
   try {
     const { error } = await supabase.rpc('parent_unlink_student', { p_student_user_id: studentUserId });
     if (error) return { ok: false, error: error.message };
+    invalidateParentDashboardCaches();
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };

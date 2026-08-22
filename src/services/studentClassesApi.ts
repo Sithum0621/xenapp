@@ -4,6 +4,10 @@ import {
   type ClassDeliveryInfo,
   type TodayScheduleItem,
 } from '@/src/services/parentStudentsApi';
+import {
+  parentClassesCacheKey,
+  sessionCacheGetOrFetch,
+} from '@/src/services/sessionDataCache';
 import { supabase } from '@/src/services/supabaseClient';
 import {
   parseClassPaymentStatus,
@@ -183,6 +187,21 @@ export async function fetchStudentClasses(
   const { data, error } = await supabase.rpc('student_list_my_classes');
   if (error) return { ok: false, error: error.message };
   return { ok: true, classes: parseClassesRows(data) };
+}
+
+export function getStudentClassesCached(
+  studentUserId: string,
+  options?: { force?: boolean },
+): Promise<StudentClassesResult> {
+  const studentId = studentUserId.trim();
+  return sessionCacheGetOrFetch(
+    parentClassesCacheKey(studentId),
+    () => fetchStudentClasses(studentId),
+    {
+      force: options?.force,
+      shouldCache: (res) => res.ok,
+    },
+  );
 }
 
 /** Build today's schedule rows from class list (same rules as Classes tab). */

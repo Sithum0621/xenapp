@@ -13,19 +13,16 @@ import {
 
 import { ScrollView } from '@/src/components/layout/scroll';
 
-import { appHref, hrefSuperAdminGamesScheduleEvent } from '@/src/navigation/AppNavigator';
+import { appHref, hrefSuperAdminGamesScheduleEvent, hrefTeacherDigitalPaperEvent } from '@/src/navigation/AppNavigator';
 import { Text } from '@/src/theme/Text';
 import { TextInput } from '@/src/theme/TextInput';
+import * as superadminGs from '@/src/services/superadminGamesScheduleApi';
+import * as teacherGs from '@/src/services/teacherGamesScheduleApi';
 import {
-  createGamesScheduleEvent,
-  createGamesScheduleSubject,
-  fetchGamesScheduleEvents,
-  fetchGamesScheduleSubjects,
-  fetchRecentGamesScheduleEvents,
-  setGamesScheduleEventActive,
-  type GamesScheduleEvent,
-  type GamesScheduleSubject,
-} from '@/src/services/superadminGamesScheduleApi';
+  teacherListMyUnifiedGroups,
+  type TeacherUnifiedGroupRow,
+} from '@/src/services/teacherGroupsApi';
+import type { GamesScheduleEvent, GamesScheduleSubject } from '@/src/services/superadminGamesScheduleApi';
 
 const BRAND_BLUE = '#041830';
 const BRAND_BLUE_DARK = '#00101F';
@@ -36,6 +33,13 @@ const PANEL_BG = '#F8FAFC';
 
 type Props = {
   desktopShell?: boolean;
+  variant?: 'superadmin' | 'teacher';
+  /** When set, papers list/create are scoped to this class (teacher digital papers). */
+  fixedClass?: {
+    source: 'institute' | 'personal';
+    groupId: string;
+    name: string;
+  };
 };
 
 function isValidWeekStart(dateStr: string): boolean {
@@ -49,10 +53,15 @@ function mapSubjectError(message: string, t: (key: string) => string): string {
   return message;
 }
 
-function mapEventError(message: string, t: (key: string) => string): string {
+function mapEventError(message: string, t: (key: string) => string, isTeacher: boolean): string {
   const m = message.toLowerCase();
   if (m.includes('event_title_required')) return t('superAdmin.gamesScheduleEventTitleRequired');
   if (m.includes('invalid_subject')) return t('superAdmin.gamesScheduleSubjectRequired');
+  if (m.includes('group_required') || m.includes('invalid_group')) {
+    return isTeacher
+      ? t('teacherDashboard.digitalPapersClassRequired')
+      : t('superAdmin.gamesScheduleSubjectRequired');
+  }
   if (m.includes('invalid_week_start') || m.includes('invalid_event_at')) {
     return t('superAdmin.gamesScheduleEventDateInvalid');
   }
@@ -118,8 +127,28 @@ function EventRow({ event, busy, formatWeekRange, onOpen, onToggleActive, t }: E
   );
 }
 
-export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) {
+export default function SuperAdminGamesScheduleSection({
+  desktopShell,
+  variant = 'superadmin',
+  fixedClass,
+}: Props) {
   const { t, i18n } = useTranslation();
+  const isTeacher = variant === 'teacher';
+  const gs = isTeacher ? teacherGs : superadminGs;
+  const td = (key: string, opts?: Record<string, unknown>) =>
+    t(`teacherDashboard.${key}`, opts);
+
+  const filterEventsForClass = useCallback(
+    (events: GamesScheduleEvent[]) => {
+      if (!fixedClass) return events;
+      return events.filter(
+        (e) =>
+          e.target_group_id === fixedClass.groupId &&
+          e.target_group_source === fixedClass.source,
+      );
+    },
+    [fixedClass],
+  );
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -144,6 +173,12 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
   const [eventSubmitting, setEventSubmitting] = useState(false);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
 
+  const [teacherGroups, setTeacherGroups] = useState<TeacherUnifiedGroupRow[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedGroupSource, setSelectedGroupSource] = useState<'institute' | 'personal' | null>(
+    null,
+  );
+
   const searchSeqRef = useRef(0);
 
   const formatWeekRange = useCallback(
@@ -164,14 +199,14 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
   );
 
   const loadRecent = useCallback(async () => {
-    const { page, error } = await fetchRecentGamesScheduleEvents();
+    const { page, error } = await gs.fetchRecentGamesScheduleEvents();
     if (error) return { error };
-    setRecentEvents(page?.events ?? []);
+    setRecentEvents(filterEventsForClass(page?.events ?? []));
     return { error: null };
-  }, []);
+  }, [gs, filterEventsForClass]);
 
   const loadSubjects = useCallback(async () => {
-    const { subjects: rows, error } = await fetchGamesScheduleSubjects();
+    const { subjects: rows, error } = await gs.fetchGamesScheduleSubjects();
     if (error) return { error, subjects: [] as GamesScheduleSubject[] };
     setSubjects(rows);
     setSelectedSubjectId((prev) => {
@@ -179,13 +214,31 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
       return rows[0]?.id ?? null;
     });
     return { error: null, subjects: rows };
-  }, []);
+  }, [gs]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
 
     const [subjectsRes, recentRes] = await Promise.all([loadSubjects(), loadRecent()]);
+
+    if (isTeacher && !fixedClass) {
+      const { rows, error } = await teacherListMyUnifiedGroups();
+      if (!error && rows.length > 0) {
+        setTeacherGroups(rows);
+        setSelectedGroupId((prev) => {
+          if (prev && rows.some((g) => g.id === prev)) return prev;
+          return rows[0].id;
+        });
+        setSelectedGroupSource((prev) => {
+          const id =
+            selectedGroupId && rows.some((g) => g.id === selectedGroupId)
+              ? selectedGroupId
+              : rows[0].id;
+          return rows.find((g) => g.id === id)?.source ?? prev ?? rows[0].source;
+        });
+      }
+    }
 
     setLoading(false);
 
@@ -196,7 +249,14 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
     if (recentRes.error) {
       setErrorMessage(recentRes.error);
     }
-  }, [loadSubjects, loadRecent]);
+  }, [isTeacher, fixedClass, loadSubjects, loadRecent, selectedGroupId]);
+
+  useEffect(() => {
+    if (fixedClass) {
+      setSelectedGroupId(fixedClass.groupId);
+      setSelectedGroupSource(fixedClass.source);
+    }
+  }, [fixedClass]);
 
   useEffect(() => {
     void loadAll();
@@ -220,7 +280,7 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
     setSearchLoading(true);
 
     void (async () => {
-      const { page, error } = await fetchGamesScheduleEvents({
+      const { page, error } = await gs.fetchGamesScheduleEvents({
         search: debouncedEventSearch,
         limit: 50,
         offset: 0,
@@ -233,10 +293,10 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
         setErrorMessage(error);
         return;
       }
-      setSearchEvents(page?.events ?? []);
+      setSearchEvents(filterEventsForClass(page?.events ?? []));
       setSearchTotal(page?.total ?? 0);
     })();
-  }, [debouncedEventSearch]);
+  }, [debouncedEventSearch, gs, filterEventsForClass]);
 
   const patchEventInLists = useCallback((updated: GamesScheduleEvent) => {
     setRecentEvents((prev) => mergeEventInList(prev, updated));
@@ -247,7 +307,7 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
     setBusyEventId(event.id);
     setErrorMessage(null);
 
-    const { event: updated, error } = await setGamesScheduleEventActive(event.id, nextActive);
+    const { event: updated, error } = await gs.setGamesScheduleEventActive(event.id, nextActive);
 
     setBusyEventId(null);
 
@@ -269,7 +329,7 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
     setSubjectSubmitting(true);
     setErrorMessage(null);
 
-    const { subject, error } = await createGamesScheduleSubject(trimmed);
+    const { subject, error } = await gs.createGamesScheduleSubject(trimmed);
 
     setSubjectSubmitting(false);
 
@@ -307,24 +367,52 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
       return;
     }
 
+    if (isTeacher && !fixedClass) {
+      if (!selectedGroupId || !selectedGroupSource) {
+        setErrorMessage(td('digitalPapersClassRequired'));
+        return;
+      }
+    }
+
+    const groupSource = fixedClass?.source ?? selectedGroupSource;
+    const groupId = fixedClass?.groupId ?? selectedGroupId;
+
+    if (isTeacher && (!groupId || !groupSource)) {
+      setErrorMessage(td('digitalPapersClassRequired'));
+      return;
+    }
+
     setEventSubmitting(true);
     setErrorMessage(null);
 
-    const { event, error } = await createGamesScheduleEvent({
-      subject_id: selectedSubjectId,
-      title: trimmedTitle,
-      week_starts_on: startsOn,
-      notes: eventNotes.trim() || null,
-    });
+    const { event, error } = isTeacher
+      ? await teacherGs.createGamesScheduleEvent({
+          subject_id: selectedSubjectId,
+          title: trimmedTitle,
+          week_starts_on: startsOn,
+          notes: eventNotes.trim() || null,
+          target_group_source: groupSource as 'institute' | 'personal',
+          target_group_id: groupId as string,
+        })
+      : await gs.createGamesScheduleEvent({
+          subject_id: selectedSubjectId,
+          title: trimmedTitle,
+          week_starts_on: startsOn,
+          notes: eventNotes.trim() || null,
+        });
 
     setEventSubmitting(false);
 
     if (error) {
-      setErrorMessage(mapEventError(error, t));
+      setErrorMessage(mapEventError(error, t, isTeacher));
       return;
     }
 
-    await loadRecent();
+    if (event) {
+      openEventEditor(event);
+    } else {
+      await loadRecent();
+    }
 
     setEventTitle('');
     setWeekStartDate('');
@@ -339,9 +427,16 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
 
   const showSearchResults = debouncedEventSearch.length > 0;
 
-  const openEventEditor = useCallback((event: GamesScheduleEvent) => {
-    router.push(appHref(hrefSuperAdminGamesScheduleEvent(event.id)));
-  }, []);
+  const openEventEditor = useCallback(
+    (event: GamesScheduleEvent) => {
+      router.push(
+        appHref(
+          isTeacher ? hrefTeacherDigitalPaperEvent(event.id) : hrefSuperAdminGamesScheduleEvent(event.id),
+        ),
+      );
+    },
+    [isTeacher],
+  );
 
   const renderEventsList = (items: GamesScheduleEvent[], emptyLabel: string) => {
     if (items.length === 0) {
@@ -370,7 +465,9 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
       style={styles.scroll}
       contentContainerStyle={[styles.scrollContent, desktopShell && styles.scrollContentDesktop]}
       keyboardShouldPersistTaps="handled">
-      <Text style={styles.subtitle}>{t('superAdmin.gamesScheduleSubtitle')}</Text>
+      {!isTeacher ? (
+        <Text style={styles.subtitle}>{t('superAdmin.gamesScheduleSubtitle')}</Text>
+      ) : null}
 
       <View style={styles.subjectsCard}>
         <View style={styles.formHeader}>
@@ -483,6 +580,42 @@ export default function SuperAdminGamesScheduleSection({ desktopShell }: Props) 
               <Text style={styles.formCancelLabel}>{t('superAdmin.cancelAddInstitute')}</Text>
             </Pressable>
           </View>
+
+          {isTeacher && !fixedClass ? (
+            <>
+              <Text style={styles.fieldLabel}>{td('digitalPapersClassLabel')}</Text>
+              {teacherGroups.length > 0 ? (
+                <View style={styles.subjectsCatalog}>
+                  {teacherGroups.map((group) => {
+                    const selected = selectedGroupId === group.id;
+                    return (
+                      <Pressable
+                        key={`${group.source}-${group.id}`}
+                        accessibilityRole="button"
+                        onPress={() => {
+                          setSelectedGroupId(group.id);
+                          setSelectedGroupSource(group.source);
+                        }}
+                        style={[
+                          styles.subjectCatalogChip,
+                          selected && styles.subjectChipSelected,
+                        ]}>
+                        <Text
+                          style={[
+                            styles.subjectCatalogChipLabel,
+                            selected && styles.subjectChipLabelSelected,
+                          ]}>
+                          {group.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Text style={styles.subjectHint}>{td('digitalPapersNoClasses')}</Text>
+              )}
+            </>
+          ) : null}
 
           <Text style={styles.fieldLabel}>{t('superAdmin.gamesScheduleEventTitleLabel')}</Text>
           <TextInput
@@ -742,6 +875,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: BRAND_BLUE_DARK,
+  },
+  subjectChipSelected: {
+    borderColor: BRAND_BLUE,
+    backgroundColor: '#E3F2FD',
+  },
+  subjectChipLabelSelected: {
+    color: BRAND_BLUE,
   },
   addSubjectBtn: {
     flexDirection: 'row',

@@ -9,12 +9,9 @@ import GamesScheduleEventMcqEditorPanel from '@/src/components/superadmin/GamesS
 import GamesScheduleEventMcqPreviewPanel from '@/src/components/superadmin/GamesScheduleEventMcqPreviewPanel';
 import { Text } from '@/src/theme/Text';
 import { AppRoutes, PROFILE_ROLE_SUPERADMIN, appHref } from '@/src/navigation/AppNavigator';
-import {
-  fetchGamesScheduleEventDetail,
-  saveGamesScheduleEventQuiz,
-  type GamesScheduleEvent,
-  type GamesScheduleQuizConfig,
-} from '@/src/services/superadminGamesScheduleApi';
+import * as superadminGs from '@/src/services/superadminGamesScheduleApi';
+import * as teacherGs from '@/src/services/teacherGamesScheduleApi';
+import type { GamesScheduleEvent, GamesScheduleQuizConfig } from '@/src/services/superadminGamesScheduleApi';
 import { supabase } from '@/src/services/supabaseClient';
 import {
   buildDraftQuestions,
@@ -48,7 +45,14 @@ const DEFAULT_SETUP: QuizSetupDraft = {
   timeMinutes: '30',
 };
 
-export default function SuperAdminGamesScheduleEventScreen() {
+type GamesScheduleEventScreenProps = {
+  variant?: 'superadmin' | 'teacher';
+};
+
+export function GamesScheduleEventScreen({ variant = 'superadmin' }: GamesScheduleEventScreenProps) {
+  const isTeacher = variant === 'teacher';
+  const gs = isTeacher ? teacherGs : superadminGs;
+  const backRoute = isTeacher ? AppRoutes.teacherDigitalPapers : AppRoutes.superAdminDashboard;
   const { t, i18n } = useTranslation();
   const { width } = useWindowDimensions();
   const { eventId: eventIdParam } = useLocalSearchParams<{ eventId?: string }>();
@@ -104,7 +108,7 @@ export default function SuperAdminGamesScheduleEventScreen() {
 
       if (cancelled) return;
 
-      if (profile?.role !== PROFILE_ROLE_SUPERADMIN) {
+      if (profile?.role !== (isTeacher ? 'teacher' : PROFILE_ROLE_SUPERADMIN)) {
         router.replace(AppRoutes.login);
         return;
       }
@@ -117,7 +121,7 @@ export default function SuperAdminGamesScheduleEventScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isTeacher]);
 
   const loadDetail = useCallback(async () => {
     if (!UUID_RE.test(eventId)) {
@@ -130,7 +134,7 @@ export default function SuperAdminGamesScheduleEventScreen() {
     setLoadError(null);
     setErrorMessage(null);
 
-    const { detail, error } = await fetchGamesScheduleEventDetail(eventId);
+    const { detail, error } = await gs.fetchGamesScheduleEventDetail(eventId);
 
     setLoading(false);
 
@@ -284,7 +288,7 @@ export default function SuperAdminGamesScheduleEventScreen() {
     setErrorMessage(null);
     setSaveSuccess(false);
 
-    const { questions, quiz, error } = await saveGamesScheduleEventQuiz(
+    const { questions, quiz, error } = await gs.saveGamesScheduleEventQuiz(
       eventId,
       config,
       payloadsFromMcqDrafts(config, drafts),
@@ -327,7 +331,7 @@ export default function SuperAdminGamesScheduleEventScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('auth.back')}
-            onPress={() => routerBackOrReplace(router, appHref(AppRoutes.superAdminDashboard))}
+            onPress={() => routerBackOrReplace(router, appHref(backRoute))}
             style={({ pressed }) => [styles.backRow, pressed && styles.backRowPressed]}>
             <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
             <Text style={styles.backText}>{t('auth.back')}</Text>
@@ -344,7 +348,7 @@ export default function SuperAdminGamesScheduleEventScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('auth.back')}
-          onPress={() => routerBackOrReplace(router, appHref(AppRoutes.superAdminDashboard))}
+            onPress={() => routerBackOrReplace(router, appHref(backRoute))}
           style={({ pressed }) => [styles.backRow, pressed && styles.backRowPressed]}>
           <Ionicons name="chevron-back" size={22} color={BRAND_BLUE_DARK} />
           <Text style={styles.backText}>{t('auth.back')}</Text>
@@ -413,6 +417,10 @@ export default function SuperAdminGamesScheduleEventScreen() {
       ) : null}
     </SafeAreaView>
   );
+}
+
+export default function SuperAdminGamesScheduleEventScreen() {
+  return <GamesScheduleEventScreen variant="superadmin" />;
 }
 
 const styles = StyleSheet.create({

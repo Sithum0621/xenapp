@@ -1,6 +1,6 @@
 /**
  * Parent registers an additional child on the household dashboard.
- * Shares parent NIC + mobile; each child gets a unique auth UUID and XEN student ID.
+ * Shares parent NIC + mobile; each child gets a unique auth UUID.
  *
  * Deploy: supabase functions deploy parent-register-child --no-verify-jwt
  */
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
 
     const { data: parentProfile, error: parentProfileErr } = await admin
       .from('profiles')
-      .select('role, nic_number, mobile_number')
+      .select('role')
       .eq('id', parentUser.id)
       .maybeSingle();
 
@@ -106,6 +106,18 @@ Deno.serve(async (req) => {
     if (parentProfile.role !== 'parent_student') {
       return json({ error: 'not_parent_account' }, req, 403);
     }
+
+    const { data: parentContact } = await admin
+      .from('profiles_contact')
+      .select('mobile_number, nic_number')
+      .eq('id', parentUser.id)
+      .maybeSingle();
+
+    const { data: parentProfileLegacy } = await admin
+      .from('profiles')
+      .select('nic_number, mobile_number')
+      .eq('id', parentUser.id)
+      .maybeSingle();
 
     const { count: householdCount, error: countErr } = await admin.rpc('parent_household_child_count', {
       p_parent_user_id: parentUser.id,
@@ -122,13 +134,18 @@ Deno.serve(async (req) => {
       parsePhoneE164(
         typeof parentMeta.login_phone === 'string' ? parentMeta.login_phone : null,
       ) ??
-      parsePhoneE164(parentProfile.mobile_number) ??
+      parsePhoneE164(parentContact?.mobile_number) ??
+      parsePhoneE164(parentProfileLegacy?.mobile_number) ??
       null;
 
-    const parentNic =
-      typeof parentProfile.nic_number === 'string' && parentProfile.nic_number.trim()
-        ? parentProfile.nic_number.trim().toUpperCase()
-        : null;
+    const parentNicRaw =
+      (typeof parentContact?.nic_number === 'string' && parentContact.nic_number.trim()
+        ? parentContact.nic_number.trim()
+        : null) ??
+      (typeof parentProfileLegacy?.nic_number === 'string' && parentProfileLegacy.nic_number.trim()
+        ? parentProfileLegacy.nic_number.trim()
+        : null);
+    const parentNic = parentNicRaw ? parentNicRaw.toUpperCase() : null;
 
     if (!loginPhone) {
       return json({ error: 'parent_mobile_missing' }, req, 400);
@@ -199,23 +216,10 @@ Deno.serve(async (req) => {
       return json({ error: 'link_failed', detail: linkErr.message }, req, 500);
     }
 
-    const { data: xenStudentId, error: xenErr } = await admin.rpc('allocate_xen_student_id', {
-      p_student_user_id: studentUserId,
-    });
-
-    if (xenErr || typeof xenStudentId !== 'string' || !xenStudentId.trim()) {
-      return json(
-        { error: 'xen_id_failed', detail: xenErr?.message ?? 'missing xen_student_id' },
-        req,
-        500,
-      );
-    }
-
     return json(
       {
         ok: true,
         student_user_id: studentUserId,
-        xen_student_id: xenStudentId.trim(),
       },
       req,
     );

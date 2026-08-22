@@ -19,7 +19,6 @@ import {
 import { Text } from '@/src/theme/Text';
 import { FontFamily } from '@/src/theme/fonts';
 import { PAGE_CONTENT_TOP, PAGE_EDGE_INSET } from '@/src/theme/pageLayout';
-import { formatBillingMonthLabel } from '@/src/utils/classPaymentStatus';
 import { appSurface } from '@/src/theme/appBrandPalette';
 
 const BRAND_BLUE = '#041830';
@@ -27,15 +26,13 @@ const BRAND_BLUE_DARK = '#00101F';
 const BORDER = '#E2E8F0';
 const PAGE_SURFACE = '#F8FAFC';
 const TEXT_MUTED = '#64748B';
-const GREEN_OK = '#15803D';
-const AMBER = '#D97706';
-const VIOLET = '#6D28D9';
+const STUDENT_ACCENT = '#2563EB';
+const STUDENT_TINT = '#EFF6FF';
+const CLASS_ACCENT = '#15803D';
+const CLASS_TINT = '#F0FDF4';
+const PAPER_ACCENT = '#6D28D9';
+const PAPER_TINT = '#F5F3FF';
 const MAX_VISIBLE_CLASSES = 3;
-
-function formatMoney(cents: number, language: string): string {
-  const locale = language === 'si' ? 'si-LK' : language === 'ta' ? 'ta-LK' : 'en-LK';
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(cents / 100));
-}
 
 function classMatchesQuery(row: TeacherDashboardClassRow, q: string): boolean {
   const n = q.trim().toLowerCase();
@@ -48,8 +45,9 @@ function classMatchesQuery(row: TeacherDashboardClassRow, q: string): boolean {
 
 export type TeacherDashboardOverviewSectionProps = {
   contentPaddingBottom?: number;
-  /** `overview` — financial summary only; `classes` — class list and search */
+  /** `overview` — home actions and today schedule; `classes` — class list and search */
   variant?: 'overview' | 'classes';
+  onOpenClasses?: () => void;
 };
 
 const ClassOverviewRow = memo(function ClassOverviewRow({
@@ -112,9 +110,10 @@ const ClassOverviewRow = memo(function ClassOverviewRow({
 function TeacherDashboardOverviewSection({
   contentPaddingBottom = 0,
   variant = 'overview',
+  onOpenClasses,
 }: TeacherDashboardOverviewSectionProps) {
   const router = useRouter();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const ov = (k: string, o?: Record<string, unknown>) => t(`teacherDashboard.overview.${k}`, o);
 
   const {
@@ -134,20 +133,12 @@ function TeacherDashboardOverviewSection({
   const [searchQuery, setSearchQuery] = useState('');
   const [createModalVisible, setCreateModalVisible] = useState(false);
 
-  const monthLabel = useMemo(
-    () =>
-      overview?.billingMonth
-        ? formatBillingMonthLabel(overview.billingMonth)
-        : formatBillingMonthLabel(new Date().toISOString().slice(0, 10)),
-    [overview?.billingMonth],
-  );
-
   const allClasses = overview?.classes ?? [];
   const showClassSearch = allClasses.length > 0;
   const searchActive = searchQuery.trim().length > 0;
   const hasMoreThanPreview = allClasses.length > MAX_VISIBLE_CLASSES;
 
-  const showFinancial = variant === 'overview';
+  const showHomeOverview = variant === 'overview';
   const showClasses = variant === 'classes';
 
   const displayedClasses = useMemo(() => {
@@ -164,7 +155,7 @@ function TeacherDashboardOverviewSection({
   }, [allClasses, searchQuery, searchActive, hasMoreThanPreview, showClasses]);
 
   const ListHeaderInner = useMemo(() => {
-    if (showFinancial) {
+    if (showHomeOverview) {
       if (loading) {
         return (
           <View style={styles.loaderWrap}>
@@ -198,77 +189,40 @@ function TeacherDashboardOverviewSection({
             <Text style={styles.partialWarn}>{ov('partialWarning', { detail: partialWarning })}</Text>
           ) : null}
 
-          <Text style={styles.monthCaption}>{ov('financialMonth', { month: monthLabel })}</Text>
-          <View style={styles.financeBlock}>
-            <View style={styles.financeRow}>
-              <ScrollFriendlyPressable
-                accessibilityRole="button"
-                accessibilityLabel={ov('openWalletA11y')}
-                onPress={() => router.push(appHref(AppRoutes.teacherWallet))}
-                style={styles.financeCardHalf}
-                innerStyle={styles.financeCardInner}>
-                <View style={[styles.financeCardTop, styles.financeCardTopHalf]}>
-                  <Ionicons name="cash-outline" size={18} color={BRAND_BLUE} />
-                  <Text style={styles.financeCardLabel} numberOfLines={2}>
-                    {ov('walletBalance')}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#94A3B8" style={styles.financeCardChevron} />
+          <View style={styles.homeStatsRow}>
+            <View style={[styles.homeStatCard, { backgroundColor: STUDENT_TINT, borderColor: '#BFDBFE' }]}>
+              <View style={styles.homeStatCardTop}>
+                <View style={[styles.homeStatIconWrap, { backgroundColor: '#DBEAFE' }]}>
+                  <Ionicons name="people-outline" size={18} color={STUDENT_ACCENT} />
                 </View>
-                <Text style={[styles.financeCardValueCompact, { color: BRAND_BLUE }]} numberOfLines={1}>
-                  Rs. {formatMoney(overview.teacherWalletBalanceCents ?? 0, i18n.language)}
-                </Text>
-              </ScrollFriendlyPressable>
-              <ScrollFriendlyPressable
-                accessibilityRole="button"
-                accessibilityLabel={ov('openIncomeBreakdownA11y')}
-                onPress={() => router.push(appHref(AppRoutes.teacherIncomeBreakdown))}
-                style={styles.financeCardHalf}
-                innerStyle={styles.financeCardInner}>
-                <View style={[styles.financeCardTop, styles.financeCardTopHalf]}>
-                  <Ionicons name="trending-up-outline" size={18} color={GREEN_OK} />
-                  <Text style={styles.financeCardLabel} numberOfLines={2}>
-                    {ov('totalIncome')}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#94A3B8" style={styles.financeCardChevron} />
-                </View>
-                <Text style={[styles.financeCardValueCompact, { color: GREEN_OK }]} numberOfLines={1}>
-                  Rs. {formatMoney(overview.totalIncomeCents, i18n.language)}
-                </Text>
-              </ScrollFriendlyPressable>
-            </View>
-            <View style={styles.financeRow}>
-              <View style={styles.financeCardHalf}>
-                <View style={styles.financeCardInner}>
-                  <View style={[styles.financeCardTop, styles.financeCardTopHalf]}>
-                    <Ionicons name="time-outline" size={18} color={AMBER} />
-                    <Text style={styles.financeCardLabel} numberOfLines={2}>
-                      {ov('duePayment')}
-                    </Text>
-                  </View>
-                  <Text style={[styles.financeCardValueCompact, { color: AMBER }]} numberOfLines={1}>
-                    Rs. {formatMoney(overview.duePaymentCents, i18n.language)}
-                  </Text>
-                </View>
+                <Text style={styles.homeStatLabel}>{ov('totalStudentsLabel')}</Text>
               </View>
-              <ScrollFriendlyPressable
-                accessibilityRole="button"
-                accessibilityLabel={ov('openSmsCreditA11y')}
-                onPress={() => router.push(appHref(AppRoutes.teacherSmsCredit))}
-                style={styles.financeCardHalf}
-                innerStyle={styles.financeCardInner}>
-                <View style={[styles.financeCardTop, styles.financeCardTopHalf]}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={VIOLET} />
-                  <Text style={styles.financeCardLabel} numberOfLines={2}>
-                    {ov('smsCredit')}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#94A3B8" style={styles.financeCardChevron} />
+              <Text style={[styles.homeStatValue, { color: STUDENT_ACCENT }]}>{overview.totalStudents}</Text>
+            </View>
+            <View style={[styles.homeStatCard, { backgroundColor: CLASS_TINT, borderColor: '#BBF7D0' }]}>
+              <View style={styles.homeStatCardTop}>
+                <View style={[styles.homeStatIconWrap, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="book-outline" size={18} color={CLASS_ACCENT} />
                 </View>
-                <Text style={[styles.financeCardValueCompact, { color: VIOLET }]} numberOfLines={1}>
-                  {(overview.smsCreditBalance ?? 0).toLocaleString('en-LK')}
-                </Text>
-              </ScrollFriendlyPressable>
+                <Text style={styles.homeStatLabel}>{ov('totalClassesLabel')}</Text>
+              </View>
+              <Text style={[styles.homeStatValue, { color: CLASS_ACCENT }]}>{allClasses.length}</Text>
             </View>
           </View>
+
+          <ScrollFriendlyPressable
+            accessibilityRole="button"
+            accessibilityLabel={ov('homeActionMyClassesA11y')}
+            onPress={() => onOpenClasses?.()}
+            style={styles.primaryActionBtnFull}
+            innerStyle={styles.primaryActionBtnInner}>
+            <Ionicons name="book-outline" size={20} color={BRAND_BLUE} />
+            <View style={styles.primaryActionTextCol}>
+              <Text style={styles.primaryActionLabel}>{ov('homeActionMyClasses')}</Text>
+              <Text style={styles.primaryActionHint}>{ov('homeActionMyClassesHint')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+          </ScrollFriendlyPressable>
 
           <View style={styles.quickActionsRow}>
             <ScrollFriendlyPressable
@@ -290,14 +244,21 @@ function TeacherDashboardOverviewSection({
               <Text style={styles.quickActionLabel}>{ov('myTimetableButton')}</Text>
             </ScrollFriendlyPressable>
           </View>
+
           <ScrollFriendlyPressable
             accessibilityRole="button"
-            accessibilityLabel={ov('linkStudentWithCardButtonA11y')}
-            onPress={() => router.push(appHref(AppRoutes.teacherLinkStudentCard))}
-            style={styles.quickActionBtn}
-            innerStyle={styles.quickActionBtnInner}>
-            <Ionicons name="qr-code-outline" size={20} color={BRAND_BLUE} />
-            <Text style={styles.quickActionLabel}>{ov('linkStudentWithCardButton')}</Text>
+            accessibilityLabel={ov('createDigitalPapersButtonA11y')}
+            onPress={() => router.push(appHref(AppRoutes.teacherDigitalPapers))}
+            style={styles.digitalPaperBtn}
+            innerStyle={styles.digitalPaperBtnInner}>
+            <View style={styles.digitalPaperIconWrap}>
+              <Ionicons name="document-text-outline" size={20} color={PAPER_ACCENT} />
+            </View>
+            <View style={styles.primaryActionTextCol}>
+              <Text style={styles.digitalPaperLabel}>{ov('createDigitalPapersButton')}</Text>
+              <Text style={styles.digitalPaperHint}>{ov('createDigitalPapersHint')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
           </ScrollFriendlyPressable>
 
           <TeacherDashboardTodaySchedule />
@@ -399,16 +360,15 @@ function TeacherDashboardOverviewSection({
     overview,
     allClasses,
     partialWarning,
-    monthLabel,
-    i18n.language,
     ov,
     t,
     showClassSearch,
     searchActive,
     searchQuery,
-    showFinancial,
+    showHomeOverview,
     showClasses,
     router,
+    onOpenClasses,
   ]);
 
   const ListHeader = useMemo(() => ListHeaderInner, [ListHeaderInner]);
@@ -544,6 +504,127 @@ const styles = StyleSheet.create({
   },
   retryBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
   headerBlock: { gap: 12, marginBottom: 14 },
+  homeStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  homeStatCard: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  homeStatCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  homeStatIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeStatLabel: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 11,
+    fontWeight: '700',
+    color: TEXT_MUTED,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    lineHeight: 14,
+  },
+  homeStatValue: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '800',
+    fontFamily: FontFamily.bold,
+  },
+  primaryActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  primaryActionBtnFull: {
+    alignSelf: 'stretch',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  primaryActionBtn: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  primaryActionBtnInner: {
+    minHeight: 72,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+  },
+  primaryActionTextCol: { flex: 1, minWidth: 0, gap: 4 },
+  primaryActionLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: BRAND_BLUE_DARK,
+    lineHeight: 18,
+  },
+  primaryActionHint: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: TEXT_MUTED,
+    lineHeight: 15,
+  },
+  digitalPaperBtn: {
+    alignSelf: 'stretch',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#DDD6FE',
+    backgroundColor: PAPER_TINT,
+    overflow: 'hidden',
+  },
+  digitalPaperBtnInner: {
+    minHeight: 72,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+  },
+  digitalPaperIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  digitalPaperLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: PAPER_ACCENT,
+    lineHeight: 20,
+  },
+  digitalPaperHint: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: TEXT_MUTED,
+    lineHeight: 15,
+  },
   quickActionsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -582,81 +663,6 @@ const styles = StyleSheet.create({
     padding: 10,
     fontWeight: '600',
     lineHeight: 18,
-  },
-  monthCaption: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: TEXT_MUTED,
-    marginTop: 2,
-  },
-  financeBlock: {
-    gap: 10,
-    alignSelf: 'stretch',
-  },
-  financeRow: {
-    flexDirection: 'row',
-    alignSelf: 'stretch',
-    gap: 10,
-  },
-  financeCard: {
-    alignSelf: 'stretch',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: BORDER,
-    overflow: 'hidden',
-  },
-  financeCardHalf: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: BORDER,
-    overflow: 'hidden',
-  },
-  financeCardInner: {
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 10,
-    width: '100%',
-    minHeight: 88,
-    justifyContent: 'space-between',
-  },
-  financeCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  financeCardTopHalf: {
-    alignItems: 'flex-start',
-  },
-  financeCardLabel: {
-    flex: 1,
-    minWidth: 0,
-    fontSize: 12,
-    fontWeight: '700',
-    color: TEXT_MUTED,
-    lineHeight: 16,
-  },
-  financeCardChevron: {
-    marginLeft: 'auto',
-    flexShrink: 0,
-    marginTop: 1,
-  },
-  financeCardValue: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '800',
-    fontFamily: FontFamily.bold,
-    alignSelf: 'flex-start',
-  },
-  financeCardValueCompact: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '800',
-    fontFamily: FontFamily.bold,
-    alignSelf: 'flex-start',
   },
   sectionTitle: {
     fontSize: 17,

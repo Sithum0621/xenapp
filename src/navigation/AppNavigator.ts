@@ -30,6 +30,7 @@ export const AppRoutes = {
   teacherMyTimetable: '/teacher-dashboard/my-timetable',
   teacherWallet: '/teacher-dashboard/wallet',
   teacherClassCards: '/teacher-dashboard/class-cards',
+  teacherDigitalPapers: '/teacher-dashboard/digital-papers',
   teacherLinkStudentCard: '/teacher-dashboard/link-student-card',
   teacherSmsCredit: '/teacher-dashboard/sms-credit',
   parentDashboard: '/parent-dashboard',
@@ -85,6 +86,11 @@ export function hrefSuperAdminInstituteProfiles(instituteId: string): string {
 /** Full path for superadmin games schedule event Q&A editor (dynamic `[eventId]` segment). */
 export function hrefSuperAdminGamesScheduleEvent(eventId: string): string {
   return `/super-admin-games-schedule-event/${eventId}`;
+}
+
+/** Teacher digital MCQ paper editor (dynamic `[eventId]` segment). */
+export function hrefTeacherDigitalPaperEvent(eventId: string): string {
+  return `/teacher-dashboard/digital-papers/${eventId}`;
 }
 
 /** Full path for parent/student games schedule exam paper (dynamic `[eventId]` segment). */

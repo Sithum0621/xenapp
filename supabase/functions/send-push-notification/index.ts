@@ -77,11 +77,19 @@ type AdminClient = ReturnType<typeof createClient>;
 /**
  * Optional SMS for attendance / payment events.
  * Push is always attempted separately — SMS off or 0 credits must not block push.
+ *
+ * Global kill switch: notification SMS stays off (teachers use push / in-app instead).
+ * Set secret SMS_NOTIFICATIONS_ENABLED=true only if SMS should be re-enabled later.
  */
 async function maybeSendTeacherSms(
   admin: AdminClient,
   notification: NotificationRecord,
 ): Promise<{ sent: boolean; skipped?: string }> {
+  const smsEnabled = (Deno.env.get('SMS_NOTIFICATIONS_ENABLED')?.trim() ?? '').toLowerCase();
+  if (smsEnabled !== 'true' && smsEnabled !== '1') {
+    return { sent: false, skipped: 'sms_globally_disabled' };
+  }
+
   const data = notification.data ?? {};
   const type = typeof data.type === 'string' ? data.type : '';
   const isAttendance = type === 'attendance_marked' || type === 'attendance_not_arrived';
